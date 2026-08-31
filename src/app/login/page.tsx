@@ -11,8 +11,8 @@ import { AlertCircle, ShieldAlert } from "lucide-react";
 
 export default function LoginPage() {
   const { user, login, error, clearError, loading } = useAuth();
-  const [email, setEmail] = useState("admin@violet-radar.com");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
 
@@ -62,7 +62,7 @@ export default function LoginPage() {
               Masukkan email dan password administrator Anda.
             </CardDescription>
           </CardHeader>
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} autoComplete="off">
             <CardContent className="space-y-4">
               {error && (
                 <Alert variant="destructive" className="border-rose-200 bg-rose-50 text-rose-900">
@@ -78,8 +78,9 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@violet-radar.com"
+                  placeholder="name@example.com"
                   required
+                  autoComplete="username"
                   className="border-slate-200 bg-slate-50 text-slate-900 focus-visible:ring-blue-600"
                 />
               </div>
@@ -92,6 +93,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
+                  autoComplete="current-password"
                   className="border-slate-200 bg-slate-50 text-slate-900 focus-visible:ring-blue-600"
                 />
               </div>
