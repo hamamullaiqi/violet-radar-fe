@@ -1,11 +1,12 @@
 import axios from "axios";
 
-// Default API URL (can be updated dynamically via Cockpit settings)
+// Default API URL strictly from environment variables (NEXT_PUBLIC_API_URL / NEXT_PUBLIC_BACKEND_URL)
 const getApiUrl = () => {
-  if (typeof window !== "undefined") {
-    return localStorage.getItem("violet_backend_url") || "http://localhost:5001";
-  }
-  return "http://localhost:5001";
+  return (
+    process.env.NEXT_PUBLIC_API_URL ||
+    process.env.NEXT_PUBLIC_BACKEND_URL ||
+    "http://localhost:5001"
+  );
 };
 
 export const api = axios.create({
@@ -22,11 +23,6 @@ api.interceptors.request.use(
       const token = localStorage.getItem("violet_token");
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
-      }
-      // Dynamically update baseURL if changed in Cockpit settings
-      const currentUrl = localStorage.getItem("violet_backend_url");
-      if (currentUrl) {
-        config.baseURL = currentUrl;
       }
     }
     return config;

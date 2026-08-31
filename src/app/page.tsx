@@ -382,10 +382,9 @@ export default function Dashboard() {
   }, [user, authLoading, router]);
 
   // Fetch signals and backend settings
-  const fetchData = useCallback(async (url: string) => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      localStorage.setItem("violet_backend_url", url);
       await api.get("/api/strategies/presets");
       setConnected(true);
 
@@ -439,12 +438,7 @@ export default function Dashboard() {
 
   // Sync state selectors on change
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedUrl = localStorage.getItem("violet_backend_url") || "http://localhost:5001";
-      setBackendUrl(storedUrl);
-      setTempUrl(storedUrl);
-      fetchData(storedUrl);
-    }
+    fetchData();
   }, [fetchData]);
 
   // Handle configuration update
@@ -457,7 +451,7 @@ export default function Dashboard() {
 
       await api.put(`/api/strategies/${selectedStrategyId}`, activeConfig);
       setMessage({ type: "success", text: `Konfigurasi strategi ${selectedStrategyId} berhasil diperbarui!` });
-      fetchData(backendUrl);
+      fetchData();
     } catch (err: any) {
       setMessage({ type: "error", text: `Gagal memperbarui konfigurasi: ${err.message}` });
     } finally {
@@ -471,7 +465,7 @@ export default function Dashboard() {
     try {
       await api.post("/api/strategies/switch-swing", { setup: setupName });
       setMessage({ type: "success", text: `Swing setup berhasil diubah ke: ${setupName}!` });
-      fetchData(backendUrl);
+      fetchData();
     } catch (err: any) {
       setMessage({ type: "error", text: `Gagal mengubah Swing setup: ${err.message}` });
       setLoading(false);
@@ -487,7 +481,7 @@ export default function Dashboard() {
         type: "success",
         text: `Sukses memicu job ${jobName}! Output: ${response.data.message || "Job selesai"}`
       });
-      fetchData(backendUrl);
+      fetchData();
     } catch (e: any) {
       setMessage({
         type: "error",
@@ -500,7 +494,7 @@ export default function Dashboard() {
 
   const handleSaveSettings = () => {
     setBackendUrl(tempUrl);
-    fetchData(tempUrl);
+    fetchData();
   };
 
   if (authLoading || !user) {
@@ -611,7 +605,7 @@ export default function Dashboard() {
           </div>
 
           <Button
-            onClick={() => fetchData(backendUrl)}
+            onClick={() => fetchData()}
             disabled={loading}
             variant="ghost"
             size="icon"
@@ -870,7 +864,7 @@ export default function Dashboard() {
                   <CardFooter className="flex justify-between border-t border-slate-100 pt-4">
                     <Button
                       type="button"
-                      onClick={() => api.post("/api/strategies/reset-defaults").then(() => fetchData(backendUrl))}
+                      onClick={() => api.post("/api/strategies/reset-defaults").then(() => fetchData())}
                       variant="outline"
                       disabled={!connected || loading}
                       className="border-slate-200 hover:bg-slate-50 hover:text-slate-900 text-slate-600"
