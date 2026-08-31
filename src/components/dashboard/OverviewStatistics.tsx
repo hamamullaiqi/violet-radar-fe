@@ -54,42 +54,47 @@ export default function OverviewStatistics() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load available months and years on mount to populate selectors
+  // Generate available months and years dynamically on mount (replaces 2 API calls)
   useEffect(() => {
-    const loadPeriods = async () => {
-      try {
-        const [mRes, yRes] = await Promise.all([
-          api.get("/api/analytics/monthly"),
-          api.get("/api/analytics/yearly")
-        ]);
-        
-        if (mRes.data) {
-          const mData = mRes.data.data || mRes.data;
-          const months = mData.map((d: any) => `${d.year}-${String(d.month).padStart(2, '0')}`);
-          setAvailableMonths(months);
-        }
-        if (yRes.data) {
-          const yData = yRes.data.data || yRes.data;
-          const years = yData.map((d: any) => String(d.year));
-          setAvailableYears(years);
-        }
-      } catch (e) {
-        console.error("Failed to load periods:", e);
+    const startYear = 2025;
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1; // 1-12
+    
+    // Generate years list (oldest to latest)
+    const years: string[] = [];
+    for (let y = startYear; y <= currentYear; y++) {
+      years.push(String(y));
+    }
+    setAvailableYears(years);
+
+    // Generate months list (YYYY-MM, oldest to latest)
+    const months: string[] = [];
+    for (let y = startYear; y <= currentYear; y++) {
+      const maxM = y === currentYear ? currentMonth : 12;
+      for (let m = 1; m <= maxM; m++) {
+        months.push(`${y}-${String(m).padStart(2, '0')}`);
       }
-    };
-    loadPeriods();
+    }
+    setAvailableMonths(months);
   }, []);
 
-  // Sync default periodKey when periodType changes
+  // Sync default periodKey when periodType changes (fully dynamic, no hardcoding)
   useEffect(() => {
     if (periodType === "ALL_TIME") {
       setPeriodKey("ALL");
     } else if (periodType === "MONTHLY") {
-      setPeriodKey(availableMonths[availableMonths.length - 1] || "2026-08");
+      const defaultMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+      setPeriodKey(availableMonths[availableMonths.length - 1] || defaultMonth);
     } else if (periodType === "YEARLY") {
-      setPeriodKey(availableYears[availableYears.length - 1] || "2026");
-    } else if (periodType === "DAILY") {
-      setPeriodKey("2026-08-28"); // Default to last trading day with data
+      const defaultYear = String(new Date().getFullYear());
+      setPeriodKey(availableYears[availableYears.length - 1] || defaultYear);
+    } else if (periodType === "DAILY" || periodType === "WEEKLY" || periodType === "3_MONTHS") {
+      // Get latest trading day (Friday if weekend, otherwise today)
+      const d = new Date();
+      const day = d.getDay();
+      if (day === 0) d.setDate(d.getDate() - 2); // Sunday -> Friday
+      else if (day === 6) d.setDate(d.getDate() - 1); // Saturday -> Friday
+      setPeriodKey(d.toISOString().split('T')[0]);
     } else {
       setPeriodKey("");
     }
@@ -188,7 +193,9 @@ export default function OverviewStatistics() {
                 <SelectContent className="bg-white border-slate-200 text-slate-900 text-xs">
                   <SelectItem value="ALL_TIME">All Time</SelectItem>
                   <SelectItem value="DAILY">Harian</SelectItem>
+                  <SelectItem value="WEEKLY">1 Minggu</SelectItem>
                   <SelectItem value="MONTHLY">Bulanan</SelectItem>
+                  <SelectItem value="3_MONTHS">3 Bulan</SelectItem>
                   <SelectItem value="YEARLY">Tahunan</SelectItem>
                   <SelectItem value="CUSTOM">Custom Date</SelectItem>
                 </SelectContent>
@@ -196,17 +203,6 @@ export default function OverviewStatistics() {
             </div>
 
             {/* Sub-Period Selector based on Period Type */}
-            {periodType === "DAILY" && (
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Pilih Hari</label>
-                <Input
-                  type="date"
-                  value={periodKey}
-                  onChange={(e) => setPeriodKey(e.target.value)}
-                  className="border-slate-200 bg-slate-50 text-slate-900 text-xs h-8 w-32 py-1"
-                />
-              </div>
-            )}
 
             {periodType === "MONTHLY" && availableMonths.length > 0 && (
               <div className="flex flex-col gap-1">

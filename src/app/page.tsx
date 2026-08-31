@@ -62,6 +62,7 @@ import ForeignDistributionCard from "@/components/dashboard/ForeignDistributionC
 import GrowthLeadersCard from "@/components/dashboard/GrowthLeadersCard";
 import LoseLeadersCard from "@/components/dashboard/LoseLeadersCard";
 import AraPatternsCard from "@/components/dashboard/AraPatternsCard";
+import SignalMonitoringCard from "@/components/dashboard/SignalMonitoringCard";
 
 // Default Backtest/Simulation metrics as a fallback when backend is disconnected
 const BACKTEST_FALLBACK = {
@@ -368,10 +369,6 @@ export default function Dashboard() {
   const [runningJob, setRunningJob] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Filtering signals
-  const [signalSearch, setSignalSearch] = useState("");
-  const [signalFilter, setSignalFilter] = useState("ALL");
-
   // Strategy Configurations
   const [selectedStrategyId, setSelectedStrategyId] = useState("SWING_DEFAULT");
   const [strategyConfigs, setStrategyConfigs] = useState<any>({});
@@ -514,13 +511,6 @@ export default function Dashboard() {
     );
   }
 
-  // Filter signals list
-  const filteredSignals = signals.filter((sig) => {
-    const matchesSearch = sig.ticker.toLowerCase().includes(signalSearch.toLowerCase());
-    const matchesFilter = signalFilter === "ALL" || sig.strategy === signalFilter;
-    return matchesSearch && matchesFilter;
-  });
-
   // Render period selector buttons helper
   const renderPeriodSelector = (current: string, setPeriod: (p: any) => void) => {
     return (
@@ -647,7 +637,7 @@ export default function Dashboard() {
       )}
 
       {/* BODY CONTENT */}
-      <main className="flex-1 p-6 max-w-7xl mx-auto w-full space-y-6">
+      <main className="flex-1 p-4 md:p-6 max-w-[1680px] mx-auto w-full space-y-6">
 
         {/* TOP METRIC SUMMARY CARDS */}
         <MetricSummaryCards />
@@ -714,102 +704,7 @@ export default function Dashboard() {
 
           {/* TAB 3: LIVE SIGNALS & DYNAMIC TRAILING STOP */}
           <TabsContent value="signals" className="space-y-6 outline-none">
-            <Card className="border-slate-200 shadow-sm bg-white">
-              <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                  <CardTitle className="text-sm font-bold text-slate-800">Monitoring Sinyal & Posisi Aktif</CardTitle>
-                  <CardDescription className="text-xs">Sinyal terbitan platform dilengkapi dynamic trailing stop loss.</CardDescription>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Input
-                    placeholder="Cari ticker..."
-                    value={signalSearch}
-                    onChange={(e) => setSignalSearch(e.target.value)}
-                    className="w-32 border-slate-200 bg-slate-50 text-slate-900 text-xs h-8 focus-visible:ring-blue-600"
-                  />
-                  <Select value={signalFilter} onValueChange={setSignalFilter}>
-                    <SelectTrigger className="w-32 border-slate-200 bg-slate-50 text-slate-900 text-xs h-8">
-                      <SelectValue placeholder="Strategi" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border-slate-200 text-slate-900 text-xs">
-                      <SelectItem value="ALL">Semua</SelectItem>
-                      <SelectItem value="SWING_DEFAULT">SWING</SelectItem>
-                      <SelectItem value="BSJP_DEFAULT">BSJP</SelectItem>
-                      <SelectItem value="ARA_HUNTER_DEFAULT">ARA HUNTER</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <Table className="min-w-full text-xs text-slate-600">
-                    <TableHeader className="border-slate-200 bg-slate-50">
-                      <TableRow className="hover:bg-transparent border-slate-200 text-slate-500 font-bold">
-                        <TableHead className="py-2.5">Ticker</TableHead>
-                        <TableHead>Strategi</TableHead>
-                        <TableHead>Setup Mode</TableHead>
-                        <TableHead className="text-right">Entry Price</TableHead>
-                        <TableHead className="text-right">TP1</TableHead>
-                        <TableHead className="text-right">TP2</TableHead>
-                        <TableHead className="text-right">Stop Loss</TableHead>
-                        <TableHead className="text-center">Score</TableHead>
-                        <TableHead className="text-center">Status</TableHead>
-                        <TableHead className="text-right">Tanggal</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredSignals.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={10} className="text-center py-8 text-slate-400">
-                            Tidak ditemukan sinyal yang cocok.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredSignals.map((sig, idx) => (
-                          <TableRow key={idx} className="border-slate-100 hover:bg-slate-55">
-                            <TableCell className="font-bold text-slate-900">{sig.ticker}</TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className={
-                                sig.strategy === "SWING_DEFAULT" ? "border-blue-200 bg-blue-50 text-blue-800" :
-                                  sig.strategy === "BSJP_DEFAULT" ? "border-emerald-200 bg-emerald-50 text-emerald-800" :
-                                    "border-amber-200 bg-amber-50 text-amber-800"
-                              }>
-                                {sig.strategy === "SWING_DEFAULT" ? "SWING" : sig.strategy === "BSJP_DEFAULT" ? "BSJP" : "ARA HUNTER"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="font-mono text-[10px] text-slate-500">{sig.setup}</TableCell>
-                            <TableCell className="text-right font-mono font-medium text-slate-700">Rp {sig.entry.toLocaleString()}</TableCell>
-                            <TableCell className="text-right font-mono text-emerald-600">Rp {sig.tp1.toLocaleString()}</TableCell>
-                            <TableCell className="text-right font-mono text-blue-600">Rp {sig.tp2.toLocaleString()}</TableCell>
-                            <TableCell className="text-right font-mono text-rose-600 flex items-center justify-end gap-1">
-                              {sig.strategy === "ARA_HUNTER_DEFAULT" && <Zap className="h-3 w-3 text-amber-500 inline" />}
-                              Rp {sig.sl.toLocaleString()}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Badge className="bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-100 font-mono text-[10px]">
-                                {sig.score}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Badge className={
-                                sig.status === "ACTIVE" ? "bg-blue-100 text-blue-800 border-blue-200" :
-                                  sig.status === "HIT_TP1" ? "bg-emerald-100 text-emerald-800 border-emerald-200" :
-                                    sig.status === "HIT_TP2" ? "bg-purple-100 text-purple-800 border-purple-200" :
-                                      sig.status === "HIT_SL" ? "bg-rose-100 text-rose-800 border-rose-200" :
-                                        "bg-slate-100 text-slate-600 border-slate-200"
-                              }>
-                                {sig.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right text-slate-400 font-mono">{sig.date}</TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
+            <SignalMonitoringCard />
           </TabsContent>
 
           {/* TAB 4: STRATEGY PARAMETER CONFIGURATIONS */}

@@ -3,8 +3,22 @@ import { MinusCircle } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import AraArbLegendDialog from "@/components/dashboard/legends/AraArbLegendDialog";
 import { api } from "@/lib/api";
 import { formatRupiah } from "@/lib/utils";
+
+const getArbStatusBadge = (status: string) => {
+  switch (status) {
+    case "ARB_LOCKED":
+      return "bg-rose-600 text-white hover:bg-rose-600";
+    case "PANIC_DUMP":
+      return "border border-rose-300 text-rose-800 bg-rose-50";
+    case "BARGAIN_HUNTING":
+      return "border border-amber-300 text-amber-800 bg-amber-50";
+    default:
+      return "bg-slate-100 text-slate-700";
+  }
+};
 
 export default function ArbTargetsCard() {
   const [period, setPeriod] = useState<"1D" | "1W" | "3M" | "YTD">("1D");
@@ -16,14 +30,15 @@ export default function ArbTargetsCard() {
     const fetchMoversArb = async () => {
       setLoading(true);
       try {
-        const res = await api.get(`/api/market/movers/arb?limit=5&period=${period}`);
+        const res = await api.get(`/api/market/movers/arb?period=${period}&limit=5`);
         if (res.data && res.data.data && active) {
           const rawList = res.data.data || [];
           const mapped = rawList.map((m: any) => ({
             ticker: m.ticker,
-            status: m.statusTag,
+            status: m.statusTag || m.status,
+            clv: m.clv !== undefined ? Number(m.clv) : 0.0,
             return1d: m.changePercent,
-            turnover: m.value,
+            turnover: m.value || m.turnover,
             foreignNet: m.foreignNet
           }));
           setList(mapped);
@@ -53,6 +68,7 @@ export default function ArbTargetsCard() {
           <div className="flex items-center gap-1.5">
             <MinusCircle className="h-4.5 w-4.5 text-rose-600" />
             <CardTitle className="text-sm font-bold text-slate-800">ARB Targets (Downside Pressure)</CardTitle>
+            <AraArbLegendDialog />
           </div>
           <CardDescription className="text-[10px]">Peta emiten teraktif dengan status ARB_LOCKED atau PANIC_DUMP.</CardDescription>
         </div>
@@ -73,41 +89,43 @@ export default function ArbTargetsCard() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="relative">
-          {loading && <div className="absolute inset-0 bg-white/50 flex items-center justify-center text-xs text-slate-500">Loading...</div>}
-          <Table className="text-xs">
+        <div className="relative overflow-x-auto">
+          {loading && <div className="absolute inset-0 bg-white/50 flex items-center justify-center text-xs text-slate-500 z-10">Loading...</div>}
+          <Table className="text-xs w-full whitespace-nowrap">
             <TableHeader className="bg-slate-50">
               <TableRow className="hover:bg-transparent">
-                <TableHead>Ticker</TableHead>
-                <TableHead>Status Radar</TableHead>
-                <TableHead className="text-right">Return {period}</TableHead>
-                <TableHead className="text-right">Value (IDR)</TableHead>
-                <TableHead className="text-right">Net Asing</TableHead>
+                <TableHead className="py-2.5 px-3">Ticker</TableHead>
+                <TableHead className="py-2.5 px-3">Status Radar</TableHead>
+                <TableHead className="text-right py-2.5 px-3">CLV</TableHead>
+                <TableHead className="text-right py-2.5 px-3">Return {period}</TableHead>
+                <TableHead className="text-right py-2.5 px-3">Value (IDR)</TableHead>
+                <TableHead className="text-right py-2.5 px-3">Net Asing</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {list.slice(0, 5).map((mover, idx) => (
                 <TableRow key={idx} className="border-slate-100">
-                  <TableCell className="font-bold text-slate-900">{mover.ticker}</TableCell>
-                  <TableCell>
-                    <Badge className={
-                      mover.status === "ARB_LOCKED" ? "bg-rose-600 text-white hover:bg-rose-600 text-[9px] py-0.5" :
-                        mover.status === "PANIC_DUMP" ? "bg-rose-100 text-rose-800 border-rose-200 text-[9px] py-0.5" :
-                          "bg-slate-100 text-slate-800 border-slate-200 text-[9px] py-0.5"
-                    }>
+                  <TableCell className="font-bold text-slate-900 py-2.5 px-3">{mover.ticker}</TableCell>
+                  <TableCell className="py-2.5 px-3">
+                    <Badge className={`${getArbStatusBadge(mover.status)} text-[9px] py-0.5 whitespace-nowrap font-bold`}>
                       {mover.status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right font-mono font-bold text-rose-600">{mover.return1d}%</TableCell>
-                  <TableCell className="text-right font-mono text-slate-400">{formatRupiah(mover.turnover)}</TableCell>
-                  <TableCell className={`text-right font-mono font-bold ${mover.foreignNet >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  <TableCell className="text-right font-mono font-bold py-2.5 px-3">
+                    <span className={mover.clv <= 0.2 ? "text-rose-600" : mover.clv <= 0.5 ? "text-amber-600" : "text-blue-600"}>
+                      {Number(mover.clv).toFixed(2)}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right font-mono font-bold text-rose-600 py-2.5 px-3">{mover.return1d}%</TableCell>
+                  <TableCell className="text-right font-mono text-slate-400 py-2.5 px-3">{formatRupiah(mover.turnover)}</TableCell>
+                  <TableCell className={`text-right font-mono font-bold py-2.5 px-3 ${mover.foreignNet >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                     {formatRupiah(mover.foreignNet, true)}
                   </TableCell>
                 </TableRow>
               ))}
               {list.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-4 text-slate-400">No data found</TableCell>
+                  <TableCell colSpan={6} className="text-center py-4 text-slate-400">No data found</TableCell>
                 </TableRow>
               )}
             </TableBody>
