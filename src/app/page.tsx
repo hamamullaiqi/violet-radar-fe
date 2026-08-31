@@ -355,9 +355,7 @@ export default function Dashboard() {
   const { user, token, loading: authLoading, logout } = useAuth();
   const router = useRouter();
 
-  // Settings
-  const [backendUrl, setBackendUrl] = useState("http://localhost:5001");
-  const [tempUrl, setTempUrl] = useState("http://localhost:5001");
+  // Connection & Loading States
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -492,11 +490,6 @@ export default function Dashboard() {
     }
   };
 
-  const handleSaveSettings = () => {
-    setBackendUrl(tempUrl);
-    fetchData();
-  };
-
   if (authLoading || !user) {
     return (
       <div className="flex-1 flex items-center justify-center min-h-screen bg-slate-50">
@@ -563,41 +556,30 @@ export default function Dashboard() {
                   <UserIcon className="h-4 w-4" />
                 </Button>
               </DialogTrigger>
-              <DialogContent className="bg-white border-slate-200 text-slate-900">
+              <DialogContent className="bg-white border-slate-200 text-slate-900 sm:max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Profil Pengguna & Endpoint</DialogTitle>
-                  <DialogDescription>Informasi akun admin dan konfigurasi koneksi.</DialogDescription>
+                  <DialogTitle>Profil Pengguna</DialogTitle>
+                  <DialogDescription>Informasi akun administrator Anda.</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-3 text-sm">
-                  <div className="grid grid-cols-3 border-b border-slate-100 pb-2">
+                <div className="space-y-3 py-3 text-sm">
+                  <div className="grid grid-cols-3 border-b border-slate-100 pb-2.5">
                     <span className="text-slate-400">Nama:</span>
-                    <span className="col-span-2 font-bold">{user.name}</span>
+                    <span className="col-span-2 font-bold text-slate-800">{user.name}</span>
                   </div>
-                  <div className="grid grid-cols-3 border-b border-slate-100 pb-2">
+                  <div className="grid grid-cols-3 border-b border-slate-100 pb-2.5">
                     <span className="text-slate-400">Email:</span>
-                    <span className="col-span-2 font-mono text-xs">{user.email}</span>
+                    <span className="col-span-2 font-mono text-xs text-slate-700">{user.email}</span>
                   </div>
-                  <div className="grid grid-cols-3 border-b border-slate-100 pb-2">
+                  <div className="grid grid-cols-3 pb-1">
                     <span className="text-slate-400">Status Role:</span>
                     <span className="col-span-2">
-                      <Badge className="bg-blue-600 hover:bg-blue-600 text-white font-medium text-[10px] py-0 px-1.5">{user.role}</Badge>
+                      <Badge className="bg-blue-600 hover:bg-blue-600 text-white font-medium text-[10px] py-0 px-2">{user.role}</Badge>
                     </span>
                   </div>
-                  <div className="flex flex-col gap-1.5 pt-2">
-                    <label className="text-xs font-semibold text-slate-500">URL Endpoint API Backend</label>
-                    <Input
-                      value={tempUrl}
-                      onChange={(e) => setTempUrl(e.target.value)}
-                      className="border-slate-200 bg-slate-50 text-slate-900 text-xs focus-visible:ring-blue-600"
-                    />
-                  </div>
                 </div>
-                <DialogFooter className="flex items-center justify-between sm:justify-between w-full">
-                  <Button onClick={logout} variant="outline" className="border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700">
-                    <LogOut className="h-4 w-4 mr-1.5" /> Keluar
-                  </Button>
-                  <Button onClick={handleSaveSettings} className="bg-blue-600 hover:bg-blue-700 text-white">
-                    Simpan Endpoint
+                <DialogFooter className="w-full pt-2">
+                  <Button onClick={logout} variant="outline" className="w-full border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 font-semibold">
+                    <LogOut className="h-4 w-4 mr-1.5" /> Keluar dari Akun
                   </Button>
                 </DialogFooter>
               </DialogContent>
