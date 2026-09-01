@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import GrowthLossLegendDialog from "@/components/dashboard/legends/GrowthLossLegendDialog";
 import { api } from "@/lib/api";
 import useFetch from "@/hooks/useFetch";
+import TickerDetailDialog from "./TickerDetailDialog";
 
 const getLossTierBadge = (tier: string) => {
   switch (tier) {
@@ -104,7 +105,7 @@ export default function LoseLeadersCard() {
             <TableBody>
               {list.slice(0, 5).map((growth, idx) => (
                 <TableRow key={idx} className="border-slate-100">
-                  <TableCell className="font-bold text-slate-900 py-2.5 px-3">{growth.ticker}</TableCell>
+                  <TableCell className="font-bold text-slate-900 py-2.5 px-3"><TickerDetailDialog ticker={growth.ticker} /></TableCell>
                   <TableCell className="text-right font-mono text-slate-500 py-2.5 px-3">
                     Rp {Number(growth.high).toLocaleString('id-ID')} / Rp {Number(growth.low).toLocaleString('id-ID')}
                   </TableCell>
