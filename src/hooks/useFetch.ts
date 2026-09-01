@@ -4,16 +4,19 @@ import { api } from "@/lib/api";
 interface UseFetchResult<T> {
   data: T | null;
   loading: boolean;
-  error: Error | null;
+  error: Error | string | null;
   refetch: () => Promise<void>;
 }
 
 export function useFetch<T = any>(url: string, dependencies: any[] = []): UseFetchResult<T> {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<Error | string | null>(null);
 
   const fetchData = useCallback(async () => {
+    if (url === "") {
+      return;
+    }
     setLoading(true);
     setError(null);
     try {

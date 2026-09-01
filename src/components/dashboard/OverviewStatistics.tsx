@@ -35,6 +35,7 @@ import {
   BarChart2,
   RefreshCw
 } from "lucide-react";
+import TickerDetailDialog from "./TickerDetailDialog";
 
 export default function OverviewStatistics() {
   // Query Filters State
@@ -59,7 +60,7 @@ export default function OverviewStatistics() {
     const startYear = 2025;
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth() + 1; // 1-12
-    
+
     // Generate years list (oldest to latest)
     const years: string[] = [];
     for (let y = startYear; y <= currentYear; y++) {
@@ -116,7 +117,7 @@ export default function OverviewStatistics() {
 
       const queryString = queryParams.length > 0 ? `?${queryParams.join("&")}` : "";
       const response = await api.get(`/api/analytics/statistics${queryString}`);
-      
+
       setStats(response.data.data || response.data);
     } catch (err: any) {
       console.error("Failed to fetch statistics:", err);
@@ -285,10 +286,10 @@ export default function OverviewStatistics() {
           </div>
         ) : (
           <div className="space-y-6">
-            
+
             {/* GRID 1: KEY STATS COMPARISON CARDS */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              
+
               {/* Card 1: Profit Engine */}
               <div className="border border-slate-100 rounded-lg p-4 bg-slate-50/50">
                 <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3">
@@ -376,7 +377,7 @@ export default function OverviewStatistics() {
 
             {/* GRID 2: INTELLIGENCE CORRELATIONS & TABLES */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              
+
               {/* Intelligence Section: Win Rate Correlations */}
               <div className="border border-slate-100 rounded-lg p-4">
                 <h4 className="text-xs font-bold text-slate-800 mb-3.5 uppercase tracking-wider flex items-center gap-1">
@@ -444,7 +445,7 @@ export default function OverviewStatistics() {
 
             {/* GRID 3: BEST & WORST TICKERS PERFORMERS */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              
+
               {/* Best Performers */}
               <div className="border border-slate-100 rounded-lg p-4">
                 <h4 className="text-xs font-bold text-slate-800 mb-3 uppercase tracking-wider flex items-center gap-1.5">
@@ -468,7 +469,7 @@ export default function OverviewStatistics() {
                     ) : (
                       stats.bestTickers.map((t: any, idx: number) => (
                         <TableRow key={idx} className="border-slate-100 hover:bg-slate-50/50">
-                          <TableCell className="font-bold text-slate-900">{t.ticker}</TableCell>
+                          <TableCell className="font-bold text-slate-900"><TickerDetailDialog ticker={t.ticker} /></TableCell>
                           <TableCell className="text-right font-mono">{t.tradesCount}</TableCell>
                           <TableCell className="text-right font-mono">{t.winRatePercent}%</TableCell>
                           <TableCell className="text-right font-mono font-bold text-emerald-600">+{t.totalPnLPercent}%</TableCell>
@@ -502,7 +503,7 @@ export default function OverviewStatistics() {
                     ) : (
                       stats.worstTickers.map((t: any, idx: number) => (
                         <TableRow key={idx} className="border-slate-100 hover:bg-slate-50/50">
-                          <TableCell className="font-bold text-slate-900">{t.ticker}</TableCell>
+                          <TableCell className="font-bold text-slate-900"><TickerDetailDialog ticker={t.ticker} /></TableCell>
                           <TableCell className="text-right font-mono">{t.tradesCount}</TableCell>
                           <TableCell className="text-right font-mono">{t.winRatePercent}%</TableCell>
                           <TableCell className="text-right font-mono font-bold text-rose-600">{t.totalPnLPercent}%</TableCell>
