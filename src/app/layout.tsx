@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Open_Sans } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import Providers from "@/components/Providers";
 
 const openSans = Open_Sans({
   variable: "--font-open-sans",
@@ -22,7 +23,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body className="min-h-full flex flex-col font-sans bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
         <AuthProvider>
-          {children}
+          <Providers >
+            {children}
+          </Providers>
         </AuthProvider>
       </body>
     </html>

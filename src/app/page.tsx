@@ -63,6 +63,7 @@ import GrowthLeadersCard from "@/components/dashboard/GrowthLeadersCard";
 import LoseLeadersCard from "@/components/dashboard/LoseLeadersCard";
 import AraPatternsCard from "@/components/dashboard/AraPatternsCard";
 import SignalMonitoringCard from "@/components/dashboard/SignalMonitoringCard";
+import SearchTickers from "@/components/SearchTickers";
 
 // Default Backtest/Simulation metrics as a fallback when backend is disconnected
 const BACKTEST_FALLBACK = {
@@ -535,6 +536,10 @@ export default function Dashboard() {
             </h1>
             <p className="text-[10px] text-slate-500 font-medium">Sistem Pemantau Sinyal & Portofolio</p>
           </div>
+        </div>
+
+        <div>
+          <SearchTickers />
         </div>
 
         <div className="flex items-center gap-4">
