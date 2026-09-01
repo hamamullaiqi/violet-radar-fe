@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Download } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import ForeignFlowLegendDialog from "@/components/dashboard/legends/ForeignFlowLegendDialog";
 import { api } from "@/lib/api";
 import { formatRupiah } from "@/lib/utils";
+import TickerDetailDialog from "./TickerDetailDialog";
+import useFetch from "@/hooks/useFetch";
 
 const getForeignTierBadge = (tier: string) => {
   switch (tier) {
@@ -23,50 +25,45 @@ const getForeignTierBadge = (tier: string) => {
   }
 };
 
+interface ForeignAccum {
+  ticker: string;
+  firstPrice: number;
+  latestPrice: number;
+  change: number;
+  buy1d: number;
+  flow5d: number;
+  foreignRatio: number;
+  domesticRatio: number;
+  ratio: number;
+  tier: string;
+}
+
 export default function ForeignAccumulationCard() {
   const [period, setPeriod] = useState<"1D" | "1W" | "3M" | "YTD">("1W");
-  const [list, setList] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    const fetchForeignAccum = async () => {
-      setLoading(true);
-      try {
-        const res = await api.get(`/api/market/accumulation/foreign-accum?period=${period}&limit=5`);
-        if (res.data && res.data.data && active) {
-          const rawList = res.data.data || [];
-          const mapped = rawList.map((f: any) => ({
-            ticker: f.ticker,
-            firstPrice: f.firstPrice,
-            latestPrice: f.latestPrice,
-            change: f.priceChangePercent,
-            buy1d: f.totalForeignNet,
-            flow5d: f.totalForeignNet,
-            foreignRatio: f.foreignBuyRatioPercent !== undefined ? f.foreignBuyRatioPercent : f.foreignNetRatioPercent,
-            domesticRatio: f.domesticBuyRatioPercent !== undefined ? f.domesticBuyRatioPercent : (100 - (f.foreignBuyRatioPercent || 0)),
-            ratio: f.foreignNetRatioPercent,
-            tier: f.tier
-          }));
-          setList(mapped);
-        }
-      } catch (e) {
-        console.error("fetchForeignAccum error:", e);
-        if (active) {
-          setList([]);
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
+
+  const { data, loading } = useFetch(`/api/market/accumulation/foreign-accum?period=${period}&limit=5`);
+
+  const list: ForeignAccum[] = useMemo(() => {
+    if (!data) return [];
+
+    return data.map((f: any) => {
+      return {
+        ticker: f.ticker,
+        firstPrice: f.firstPrice,
+        latestPrice: f.latestPrice,
+        change: f.priceChangePercent,
+        buy1d: f.totalForeignNet,
+        flow5d: f.totalForeignNet,
+        foreignRatio: f.foreignBuyRatioPercent !== undefined ? f.foreignBuyRatioPercent : f.foreignNetRatioPercent,
+        domesticRatio: f.domesticBuyRatioPercent !== undefined ? f.domesticBuyRatioPercent : (100 - (f.foreignBuyRatioPercent || 0)),
+        ratio: f.foreignNetRatioPercent,
+        tier: f.tier
       }
-    };
+    })
+  }, [data])
 
-    fetchForeignAccum();
-    return () => {
-      active = false;
-    };
-  }, [period]);
+
 
   return (
     <Card className="border-slate-200 shadow-sm bg-white">
@@ -112,7 +109,7 @@ export default function ForeignAccumulationCard() {
             <TableBody>
               {list.slice(0, 5).map((flow, idx) => (
                 <TableRow key={idx} className="border-slate-100">
-                  <TableCell className="font-bold text-slate-900 py-2.5 px-3">{flow.ticker}</TableCell>
+                  <TableCell className="font-bold text-slate-900 py-2.5 px-3"><TickerDetailDialog ticker={flow.ticker} /></TableCell>
                   <TableCell className="text-right font-mono text-slate-500 py-2.5 px-3">
                     Rp {Number(flow.firstPrice || 0).toLocaleString('id-ID')} / Rp {Number(flow.latestPrice || 0).toLocaleString('id-ID')}
                   </TableCell>

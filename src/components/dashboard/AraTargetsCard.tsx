@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { PlusCircle } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import AraArbLegendDialog from "@/components/dashboard/legends/AraArbLegendDialog";
 import { api } from "@/lib/api";
 import { formatRupiah } from "@/lib/utils";
+import TickerDetailDialog from "./TickerDetailDialog";
+import useFetch from "@/hooks/useFetch";
 
 const getAraStatusBadge = (status: string) => {
   switch (status) {
@@ -22,46 +24,32 @@ const getAraStatusBadge = (status: string) => {
   }
 };
 
+interface MoverData {
+  ticker: string;
+  status: string;
+  clv: number;
+  return1d: number;
+  turnover: number;
+  foreignNet: number;
+}
+
 export default function AraTargetsCard() {
-  const [period, setPeriod] = useState<"1D" | "1W" | "3M" | "YTD">("1D");
-  const [list, setList] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    const fetchMoversAra = async () => {
-      setLoading(true);
-      try {
-        const res = await api.get(`/api/market/movers/ara?period=${period}&limit=5`);
-        if (res.data && res.data.data && active) {
-          const rawList = res.data.data || [];
-          const mapped = rawList.map((m: any) => ({
-            ticker: m.ticker,
-            status: m.statusTag || m.status,
-            clv: m.clv !== undefined ? Number(m.clv) : 1.0,
-            return1d: m.changePercent,
-            turnover: m.value || m.turnover,
-            foreignNet: m.foreignNet
-          }));
-          setList(mapped);
-        }
-      } catch (e) {
-        console.error("fetchMoversAra error:", e);
-        if (active) {
-          setList([]);
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    };
 
-    fetchMoversAra();
-    return () => {
-      active = false;
-    };
-  }, [period]);
+  const { data, loading } = useFetch("/api/market/movers/ara?limit=5");
+
+  const list: MoverData[] = useMemo(() => {
+    if (!data) return [];
+
+    return data.map((m: any) => ({
+      ticker: m.ticker,
+      status: m.statusTag || m.status,
+      clv: m.clv !== undefined ? Number(m.clv) : 1.0,
+      return1d: m.changePercent,
+      turnover: m.value || m.turnover,
+      foreignNet: m.foreignNet
+    }));
+  }, [data]);
 
   return (
     <Card className="border-slate-200 shadow-sm bg-white">
@@ -74,21 +62,6 @@ export default function AraTargetsCard() {
           </div>
           <CardDescription className="text-[10px]">Peta emiten teraktif dengan status ARA_LOCKED atau ARA_POTENTIAL.</CardDescription>
         </div>
-        <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded border border-slate-200 text-[10px] font-bold">
-          {(["1D", "1W", "3M", "YTD"] as const).map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setPeriod(p)}
-              className={`px-1.5 py-0.5 rounded-sm transition-all ${period === p
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-400 hover:text-slate-600"
-                }`}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
       </CardHeader>
       <CardContent>
         <div className="relative overflow-x-auto">
@@ -99,7 +72,7 @@ export default function AraTargetsCard() {
                 <TableHead className="py-2.5 px-3">Ticker</TableHead>
                 <TableHead className="py-2.5 px-3">Status Radar</TableHead>
                 <TableHead className="text-right py-2.5 px-3">CLV</TableHead>
-                <TableHead className="text-right py-2.5 px-3">Return {period}</TableHead>
+                <TableHead className="text-right py-2.5 px-3">Return</TableHead>
                 <TableHead className="text-right py-2.5 px-3">Value (IDR)</TableHead>
                 <TableHead className="text-right py-2.5 px-3">Net Asing</TableHead>
               </TableRow>
@@ -107,7 +80,7 @@ export default function AraTargetsCard() {
             <TableBody>
               {list.slice(0, 5).map((mover, idx) => (
                 <TableRow key={idx} className="border-slate-100">
-                  <TableCell className="font-bold text-slate-900 py-2.5 px-3">{mover.ticker}</TableCell>
+                  <TableCell className="font-bold text-slate-900 py-2.5 px-3"><TickerDetailDialog ticker={mover.ticker} /></TableCell>
                   <TableCell className="py-2.5 px-3">
                     <Badge className={`${getAraStatusBadge(mover.status)} text-[9px] py-0.5 whitespace-nowrap font-bold`}>
                       {mover.status}

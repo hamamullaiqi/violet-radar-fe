@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { TrendingUp } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import GrowthLossLegendDialog from "@/components/dashboard/legends/GrowthLossLegendDialog";
 import { api } from "@/lib/api";
+import useFetch from "@/hooks/useFetch";
 
 const getGrowthTierBadge = (tier: string) => {
   switch (tier) {
@@ -27,47 +28,38 @@ const getGrowthTierBadge = (tier: string) => {
   }
 };
 
+interface GrowthLeader {
+  ticker: string;
+  high: number;
+  low: number;
+  maxGain: number;
+  maxDd: number;
+  change: number;
+  tier: string;
+}
+
 export default function GrowthLeadersCard() {
   const [period, setPeriod] = useState<"1D" | "1W" | "3M" | "YTD">("3M");
-  const [list, setList] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    const fetchGrowthGainers = async () => {
-      setLoading(true);
-      try {
-        const res = await api.get(`/api/market/growth/leaders?period=${period}&limit=5`);
-        if (res.data && res.data.data && active) {
-          const rawList = res.data.data || [];
-          const mapped = rawList.map((g: any) => ({
-            ticker: g.ticker,
-            high: g.highPriceInPeriod,
-            low: g.lowPriceInPeriod,
-            maxGain: g.maxGainInPeriodPercent,
-            maxDd: g.maxDrawdownInPeriodPercent,
-            change: g.priceChangePercent,
-            tier: g.growthTier
-          }));
-          setList(mapped);
-        }
-      } catch (e) {
-        console.error("fetchGrowthGainers error:", e);
-        if (active) {
-          setList([]);
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
+
+  const { data, loading } = useFetch(`/api/market/growth/leaders?period=${period}&limit=5`);
+
+  const list: GrowthLeader[] = useMemo(() => {
+    if (!data) return [];
+
+    return data.map((g: any) => {
+      return {
+        ticker: g.ticker,
+        high: g.highPriceInPeriod,
+        low: g.lowPriceInPeriod,
+        maxGain: g.maxGainInPeriodPercent,
+        maxDd: g.maxDrawdownInPeriodPercent,
+        change: g.priceChangePercent,
+        tier: g.growthTier
       }
-    };
+    })
+  }, [data])
 
-    fetchGrowthGainers();
-    return () => {
-      active = false;
-    };
-  }, [period]);
 
   return (
     <Card className="border-slate-200 shadow-sm bg-white">
