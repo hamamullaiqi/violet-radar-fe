@@ -18,7 +18,8 @@ import {
   User as UserIcon,
   SlidersHorizontal,
   ChevronRight,
-
+  BarChart3,
+  Radar,
 } from "lucide-react";
 import {
   Card,
@@ -38,7 +39,6 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -55,6 +55,7 @@ import MetricSummaryCards from "@/components/dashboard/MetricSummaryCards";
 import OverviewMonthly from "@/components/dashboard/OverviewMonthly";
 import OverViewYearly from "@/components/dashboard/OverViewYearly";
 import OverviewStatistics from "@/components/dashboard/OverviewStatistics";
+import AraPotentialCard from "@/components/dashboard/AraPotentialCard";
 import AraTargetsCard from "@/components/dashboard/AraTargetsCard";
 import ArbTargetsCard from "@/components/dashboard/ArbTargetsCard";
 import ForeignAccumulationCard from "@/components/dashboard/ForeignAccumulationCard";
@@ -373,6 +374,30 @@ export default function Dashboard() {
   const [strategyConfigs, setStrategyConfigs] = useState<any>({});
   const [updatingConfig, setUpdatingConfig] = useState(false);
 
+  // Workspace Page Navigation State
+  type CockpitPage = "overview" | "radars" | "signals" | "strategies" | "jobs";
+  const [activePage, setActivePage] = useState<CockpitPage>("overview");
+
+  // Sync tab with URL query parameter on initial mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tabParam = urlParams.get("tab") as CockpitPage;
+      if (tabParam && ["overview", "radars", "signals", "strategies", "jobs"].includes(tabParam)) {
+        setActivePage(tabParam);
+      }
+    }
+  }, []);
+
+  const handlePageChange = (newPage: CockpitPage) => {
+    setActivePage(newPage);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", newPage);
+      window.history.replaceState({}, "", url.toString());
+    }
+  };
+
   // Guard routing
   useEffect(() => {
     if (!authLoading && !user) {
@@ -524,33 +549,33 @@ export default function Dashboard() {
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
 
       {/* NAVBAR */}
-      <nav className="border-b border-slate-200 bg-white sticky top-0 z-50 px-6 py-4 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-3">
+      <nav className="border-b border-slate-200 bg-white sticky top-0 z-50 px-3 sm:px-6 py-2.5 sm:py-4 flex items-center justify-between gap-2 sm:gap-4 shadow-xs">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <div className="relative flex h-2.5 w-2.5">
             <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${connected ? "bg-emerald-400" : "bg-rose-400"}`}></span>
             <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${connected ? "bg-emerald-500" : "bg-rose-500"}`}></span>
           </div>
           <div>
-            <h1 className="font-extrabold text-lg tracking-tight text-slate-900">
-              VIOLETRADAR COCKPIT
+            <h1 className="font-black text-sm sm:text-lg tracking-tight text-slate-900">
+              VIOLETRADAR
             </h1>
-            <p className="text-[10px] text-slate-500 font-medium">Sistem Pemantau Sinyal & Portofolio</p>
+            <p className="text-[10px] text-slate-500 font-medium hidden sm:block">Sistem Pemantau Sinyal & Portofolio</p>
           </div>
         </div>
 
-        <div>
+        <div className="flex-1 max-w-xs sm:max-w-sm flex justify-center sm:justify-start">
           <SearchTickers />
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
           {/* Regime Indicator */}
-          <div className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200 text-xs">
+          <div className="hidden md:flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200 text-xs">
             <span className="text-slate-500 font-medium">IHSG:</span>
             <span className="font-bold text-blue-600">{marketRegime.regime} (+{marketRegime.score})</span>
           </div>
 
           {/* User Profile Summary */}
-          <div className="flex items-center gap-2 border-l border-slate-200 pl-4">
+          <div className="flex items-center gap-1.5 sm:gap-2 border-l border-slate-200 pl-2 sm:pl-4">
             <div className="text-right hidden sm:block">
               <p className="text-xs font-bold text-slate-800">{user.name}</p>
               <p className="text-[10px] text-slate-400">{user.role}</p>
@@ -623,28 +648,45 @@ export default function Dashboard() {
         {/* TOP METRIC SUMMARY CARDS */}
         <MetricSummaryCards />
 
-        {/* WORKSPACE NAVIGATION TABS */}
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="bg-slate-200/60 p-1 border border-slate-200 rounded-lg flex w-fit gap-1">
-            <TabsTrigger value="overview" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-xs font-bold py-1.5 px-3">
-              Overview & Grafik
-            </TabsTrigger>
-            <TabsTrigger value="radars" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-xs font-bold py-1.5 px-3">
-              Special Radars Pasar
-            </TabsTrigger>
-            <TabsTrigger value="signals" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-xs font-bold py-1.5 px-3">
-              Sinyal Live & Trailing
-            </TabsTrigger>
-            <TabsTrigger value="strategies" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-xs font-bold py-1.5 px-3">
-              Konfigurasi Parameter
-            </TabsTrigger>
-            <TabsTrigger value="jobs" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-xs font-bold py-1.5 px-3">
-              Control Panel & Jobs
-            </TabsTrigger>
-          </TabsList>
+        {/* WORKSPACE PAGE NAVIGATION BAR */}
+        <div className="sticky top-[53px] z-30 bg-slate-50/95 backdrop-blur-md py-1.5 sm:py-2">
+          <div className="flex items-center gap-1.5 p-1.5 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-x-auto no-scrollbar scroll-smooth">
+            <PageNavButton
+              active={activePage === "overview"}
+              onClick={() => handlePageChange("overview")}
+              icon={<BarChart3 className="w-4 h-4" />}
+              label="Overview & Grafik"
+            />
+            <PageNavButton
+              active={activePage === "radars"}
+              onClick={() => handlePageChange("radars")}
+              icon={<Radar className="w-4 h-4" />}
+              label="Special Radars Pasar"
+            />
+            <PageNavButton
+              active={activePage === "signals"}
+              onClick={() => handlePageChange("signals")}
+              icon={<Zap className="w-4 h-4" />}
+              label="Sinyal Live & Trailing"
+            />
+            <PageNavButton
+              active={activePage === "strategies"}
+              onClick={() => handlePageChange("strategies")}
+              icon={<SlidersHorizontal className="w-4 h-4" />}
+              label="Konfigurasi Parameter"
+            />
+            <PageNavButton
+              active={activePage === "jobs"}
+              onClick={() => handlePageChange("jobs")}
+              icon={<Clock className="w-4 h-4" />}
+              label="Control Panel & Jobs"
+            />
+          </div>
+        </div>
 
-          {/* TAB 1: OVERVIEW & PERFORMANCE VISUALIZATIONS */}
-          <TabsContent value="overview" className="space-y-6 outline-none">
+        {/* PAGE 1: OVERVIEW & PERFORMANCE VISUALIZATIONS */}
+        {activePage === "overview" && (
+          <div className="space-y-6 animate-in fade-in-50 duration-150">
             <div className="space-y-6">
               {/* Visualizations row */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -653,10 +695,15 @@ export default function Dashboard() {
               </div>
               <OverviewStatistics />
             </div>
-          </TabsContent>
+          </div>
+        )}
 
-          {/* TAB 2: SPECIAL RADARS PASAR */}
-          <TabsContent value="radars" className="space-y-6 outline-none">
+        {/* PAGE 2: SPECIAL RADARS PASAR */}
+        {activePage === "radars" && (
+          <div className="space-y-6 animate-in fade-in-50 duration-150">
+
+            {/* 🎯 HEADLINER: RADAR CALON ARA & BELI SORE (BSJP) */}
+            <AraPotentialCard />
 
             {/* ROW 1: SMART MARKET MOVERS - ARA VS ARB */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -681,15 +728,19 @@ export default function Dashboard() {
               <AraPatternsCard />
             </div>
 
-          </TabsContent>
+          </div>
+        )}
 
-          {/* TAB 3: LIVE SIGNALS & DYNAMIC TRAILING STOP */}
-          <TabsContent value="signals" className="space-y-6 outline-none">
+        {/* PAGE 3: LIVE SIGNALS & DYNAMIC TRAILING STOP */}
+        {activePage === "signals" && (
+          <div className="space-y-6 animate-in fade-in-50 duration-150">
             <SignalMonitoringCard />
-          </TabsContent>
+          </div>
+        )}
 
-          {/* TAB 4: STRATEGY PARAMETER CONFIGURATIONS */}
-          <TabsContent value="strategies" className="space-y-6 outline-none">
+        {/* PAGE 4: STRATEGY PARAMETER CONFIGURATIONS */}
+        {activePage === "strategies" && (
+          <div className="space-y-6 animate-in fade-in-50 duration-150">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
               {/* Left sidebar selector */}
@@ -870,10 +921,12 @@ export default function Dashboard() {
               </Card>
 
             </div>
-          </TabsContent>
+          </div>
+        )}
 
-          {/* TAB 5: CONTROL PANEL & JOBS AUTOMATIONS */}
-          <TabsContent value="jobs" className="space-y-6 outline-none">
+        {/* PAGE 5: CONTROL PANEL & JOBS AUTOMATIONS */}
+        {activePage === "jobs" && (
+          <div className="space-y-6 animate-in fade-in-50 duration-150">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
               {/* Manual Job Triggers */}
@@ -962,8 +1015,8 @@ export default function Dashboard() {
               </Card>
 
             </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
 
       </main>
 
@@ -972,5 +1025,32 @@ export default function Dashboard() {
         <p>© 2026 VioletRadar. Built with Next.js, shadcn/ui & Tailwind CSS. Powered by Open Sans Font & Calmar Risk Engine.</p>
       </footer>
     </div>
+  );
+}
+
+function PageNavButton({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap shrink-0 ${
+        active
+          ? "bg-indigo-600 text-white shadow-xs"
+          : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+      }`}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
   );
 }
