@@ -174,7 +174,7 @@ export default function SignalMonitoringCard() {
               <SignalStatusLegendDialog />
             </div>
             <CardDescription className="text-xs mt-0.5">
-              Sinyal terpisah per status dengan pengawalan trailing stop otomatis & metriks strategi terintegrasi.
+              Sinyal terfokus: Maksimal 5 Kandidat (3 Swing + 2 BSJP) dengan skor tertinggi & probabilitas maksimal. ARA Hunter dinonaktifkan digantikan Radar Calon ARA.
             </CardDescription>
           </div>
 
@@ -208,14 +208,15 @@ export default function SignalMonitoringCard() {
             </div>
 
             <Select value={strategyFilter} onValueChange={setStrategyFilter}>
-              <SelectTrigger className="w-36 border-slate-200 bg-slate-50 text-slate-900 text-xs h-8">
+              <SelectTrigger className="w-44 border-slate-200 bg-slate-50 text-slate-900 text-xs h-8">
                 <SelectValue placeholder="Strategi" />
               </SelectTrigger>
               <SelectContent className="bg-white border-slate-200 text-slate-900 text-xs">
                 <SelectItem value="ALL">Semua Strategi</SelectItem>
-                <SelectItem value="SWING_DEFAULT">SWING</SelectItem>
-                <SelectItem value="BSJP_DEFAULT">BSJP</SelectItem>
-                <SelectItem value="ARA_HUNTER_DEFAULT">ARA HUNTER</SelectItem>
+                <SelectItem value="SWING_DEFAULT">SWING (Fokus Top 3)</SelectItem>
+                <SelectItem value="BSJP_DEFAULT">BSJP (Fokus Top 2)</SelectItem>
+                <SelectItem value="RADAR_CALON_ARA_BELI_SORE">CALON ARA & BELI SORE</SelectItem>
+                <SelectItem value="ARA_HUNTER_DEFAULT" disabled className="text-slate-400">ARA HUNTER (Nonaktif)</SelectItem>
               </SelectContent>
             </Select>
 
@@ -664,6 +665,7 @@ export default function SignalMonitoringCard() {
                   <TableHead className="py-2.5 px-3">Strategi</TableHead>
                   <TableHead className="py-2.5 px-3">Setup Mode</TableHead>
                   <TableHead className="text-right py-2.5 px-3">Entry Price</TableHead>
+                  <TableHead className="text-right py-2.5 px-3">Konfirmasi Breakout</TableHead>
                   <TableHead className="text-right py-2.5 px-3">Target TP1</TableHead>
                   <TableHead className="text-right py-2.5 px-3">Target TP2</TableHead>
                   <TableHead className="text-right py-2.5 px-3">Stop Loss</TableHead>
@@ -678,7 +680,7 @@ export default function SignalMonitoringCard() {
               <TableBody>
                 {signals.length === 0 && !loading ? (
                   <TableRow>
-                    <TableCell colSpan={13} className="text-center py-8 text-slate-400">
+                    <TableCell colSpan={activeTab === "TRAILING_WIN" ? 15 : 14} className="text-center py-8 text-slate-400">
                       Tidak ada sinyal dengan status <span className="font-bold text-slate-600">{activeTab}</span> pada filter saat ini.
                     </TableCell>
                   </TableRow>
@@ -723,8 +725,8 @@ export default function SignalMonitoringCard() {
                     const slPct = entryVal > 0 && slVal > 0 ? ((slVal - entryVal) / entryVal) * 100 : 0;
 
                     // Trailing trigger threshold calculation
-                    const stratType = sig.strategyType || (sig.strategyId?.includes("SWING") ? "SWING" : sig.strategyId?.includes("BSJP") ? "BSJP" : (sig.strategyId?.includes("BOUNC") || sig.strategyId?.includes("REVERSAL")) ? "BOUNCING" : "ARA_HUNTER");
-                    const triggerPct = stratType === "BSJP" ? 1.0 : stratType === "ARA_HUNTER" ? 1.5 : 2.0;
+                    const stratType = sig.strategyType || (sig.strategyId?.includes("RADAR_CALON_ARA") || sig.strategyId?.includes("BELI_SORE") ? "RADAR_CALON_ARA_BELI_SORE" : sig.strategyId?.includes("SWING") ? "SWING" : sig.strategyId?.includes("BSJP") ? "BSJP" : (sig.strategyId?.includes("BOUNC") || sig.strategyId?.includes("REVERSAL")) ? "BOUNCING" : "ARA_HUNTER");
+                    const triggerPct = (stratType === "BSJP" || stratType === "RADAR_CALON_ARA_BELI_SORE") ? 1.0 : stratType === "ARA_HUNTER" ? 1.5 : 2.0;
                     const trailingTriggerHigh = Math.round(entryVal * (1 + triggerPct / 100));
                     const isTrailingTriggered = sig.highSinceEntry && sig.highSinceEntry >= trailingTriggerHigh;
 
@@ -740,16 +742,18 @@ export default function SignalMonitoringCard() {
                           <Badge
                             variant="outline"
                             className={
-                              stratType === "SWING" || sig.strategyId?.includes("SWING")
+                              stratType === "RADAR_CALON_ARA_BELI_SORE" || sig.strategyId?.includes("RADAR_CALON_ARA")
+                                ? "border-rose-300 bg-rose-50 text-rose-800 text-[10px] font-bold"
+                                : stratType === "SWING" || sig.strategyId?.includes("SWING")
                                 ? "border-blue-200 bg-blue-50 text-blue-800 text-[10px]"
                                 : stratType === "BSJP" || sig.strategyId?.includes("BSJP")
-                                  ? "border-emerald-200 bg-emerald-50 text-emerald-800 text-[10px]"
-                                  : stratType === "BOUNCING" || stratType === "REVERSAL" || sig.strategyId?.includes("BOUNC") || sig.strategyId?.includes("REVERSAL")
-                                    ? "border-purple-200 bg-purple-50 text-purple-800 text-[10px]"
-                                    : "border-amber-200 bg-amber-50 text-amber-800 text-[10px]"
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-800 text-[10px]"
+                                : stratType === "BOUNCING" || stratType === "REVERSAL" || sig.strategyId?.includes("BOUNC") || sig.strategyId?.includes("REVERSAL")
+                                ? "border-purple-200 bg-purple-50 text-purple-800 text-[10px]"
+                                : "border-amber-200 bg-amber-50 text-amber-800 text-[10px]"
                             }
                           >
-                            {stratType === "REVERSAL" ? "BOUNCING" : stratType.replace("_", " ")}
+                            {stratType === "RADAR_CALON_ARA_BELI_SORE" ? "CALON ARA & BELI SORE" : stratType === "REVERSAL" ? "BOUNCING" : stratType.replace(/_/g, " ")}
                           </Badge>
                         </TableCell>
 
@@ -761,6 +765,24 @@ export default function SignalMonitoringCard() {
                         {/* ENTRY PRICE */}
                         <TableCell className="text-right font-mono font-medium text-slate-700 py-2.5 px-3">
                           Rp {entryVal.toLocaleString("id-ID")}
+                        </TableCell>
+
+                        {/* KONFIRMASI BREAKOUT */}
+                        <TableCell className="text-right py-2.5 px-3">
+                          {sig.confirmationPrice || sig.breakoutPrice ? (
+                            <div className="inline-flex flex-col items-end">
+                              <span className="font-mono font-bold text-amber-600 text-[11px]">
+                                Rp {Number(sig.confirmationPrice || sig.breakoutPrice).toLocaleString("id-ID")}
+                              </span>
+                              {sig.confirmationTriggerPct ? (
+                                <span className="text-[9px] text-amber-700 font-bold bg-amber-50 border border-amber-200 px-1 rounded">
+                                  +{sig.confirmationTriggerPct}%
+                                </span>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <span className="text-slate-300 font-mono text-[11px]">-</span>
+                          )}
                         </TableCell>
 
                         {/* TARGET TP1 CELL WITH HIT MARKER */}

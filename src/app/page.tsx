@@ -120,8 +120,8 @@ const BACKTEST_FALLBACK = {
     {
       id: "ARA_HUNTER_DEFAULT",
       name: "ARA Hunter",
-      type: "Upside Engine",
-      color: "#f59e0b",
+      type: "Radar Calon ARA",
+      color: "#94a3b8",
       return: 29.05,
       cagr: 22.34,
       maxDd: 5.08,
@@ -131,16 +131,16 @@ const BACKTEST_FALLBACK = {
       avgWin: 4.50,
       avgLoss: -3.58,
       profitFactor: 1.39,
-      sizing: "5% per posisi",
-      roles: "Menangkap momentum saham runner dengan trailing stop",
+      sizing: "Nonaktif (Digantikan Radar Calon ARA)",
+      roles: "Dinonaktifkan: Deteksi lonjakan ARA kini terpusat pada Radar Calon ARA & Beli Sore",
     }
   ],
   recentSignals: [
-    { ticker: "BBCA", strategy: "SWING_DEFAULT", setup: "BREAKOUT", entry: 10250, tp1: 10650, tp2: 11100, sl: 9850, score: 88, status: "ACTIVE", date: "2026-08-28" },
-    { ticker: "ADRO", strategy: "BSJP_DEFAULT", setup: "MOMENTUM", entry: 3720, tp1: 3790, tp2: 3850, sl: 3650, score: 79, status: "HIT_TP1", date: "2026-08-28" },
-    { ticker: "TLKM", strategy: "ARA_HUNTER_DEFAULT", setup: "MOMENTUM", entry: 2850, tp1: 2960, tp2: 3560, sl: 2736, score: 84, status: "ACTIVE", date: "2026-08-28" },
-    { ticker: "BRIS", strategy: "SWING_DEFAULT", setup: "PULLBACK", entry: 2950, tp1: 3070, tp2: 3190, sl: 2830, score: 76, status: "HIT_TP2", date: "2026-08-27" },
-    { ticker: "BBNI", strategy: "SWING_DEFAULT", setup: "CROSSOVER", entry: 5350, tp1: 5560, tp2: 5780, sl: 5136, score: 81, status: "HIT_SL", date: "2026-08-26" },
+    { ticker: "BBTN", strategy: "BSJP_DEFAULT", setup: "MOMENTUM", entry: 1255, tp1: 1280, tp2: 1315, sl: 1230, score: 100, status: "ACTIVE", date: "2026-09-04" },
+    { ticker: "ADRO", strategy: "BSJP_DEFAULT", setup: "MOMENTUM", entry: 2740, tp1: 2790, tp2: 2850, sl: 2680, score: 100, status: "ACTIVE", date: "2026-09-04" },
+    { ticker: "ABMM", strategy: "SWING_DEFAULT", setup: "BREAKOUT", entry: 2850, tp1: 2980, tp2: 3160, sl: 2720, score: 100, status: "ACTIVE", date: "2026-09-04" },
+    { ticker: "BMRI", strategy: "SWING_DEFAULT", setup: "BREAKOUT", entry: 4460, tp1: 4660, tp2: 4950, sl: 4260, score: 100, status: "ACTIVE", date: "2026-09-04" },
+    { ticker: "BTPS", strategy: "SWING_DEFAULT", setup: "BREAKOUT", entry: 1010, tp1: 1055, tp2: 1120, sl: 965, score: 100, status: "ACTIVE", date: "2026-09-04" },
   ],
   equityCurve: [
     { day: "Hari 0", equity: 100 },
@@ -756,10 +756,17 @@ export default function Dashboard() {
                       onClick={() => setSelectedStrategyId(strat.id)}
                       className={`w-full text-left p-3 rounded-lg border text-xs flex items-center justify-between transition-all ${selectedStrategyId === strat.id
                         ? "border-blue-600 bg-blue-50 text-blue-900 font-bold"
-                        : "border-slate-200 hover:bg-slate-55 text-slate-650"
+                        : "border-slate-200 hover:bg-slate-50 text-slate-600"
                         }`}
                     >
-                      <span>{strat.name}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span>{strat.name}</span>
+                        {strat.id === "ARA_HUNTER_DEFAULT" && (
+                          <span className="text-[9px] bg-amber-50 text-amber-700 font-semibold px-1.5 py-0.5 rounded border border-amber-200">
+                            Nonaktif
+                          </span>
+                        )}
+                      </div>
                       <ChevronRight className={`h-4 w-4 ${selectedStrategyId === strat.id ? "text-blue-600" : "text-slate-400"}`} />
                     </button>
                   ))}
@@ -806,7 +813,13 @@ export default function Dashboard() {
                     ) : !strategyConfigs[selectedStrategyId] ? (
                       <p className="text-slate-400">Mengunduh konfigurasi dari server...</p>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <>
+                        {selectedStrategyId === "ARA_HUNTER_DEFAULT" && (
+                          <div className="p-3 rounded-lg bg-amber-50 text-amber-900 border border-amber-200 text-xs">
+                            <span className="font-bold">Status: Dinonaktifkan.</span> Sinyal ARA Hunter dinonaktifkan agar sinyal lebih fokus. Deteksi lonjakan calon ARA kini terpusat di tab <b>Special Radars Pasar &gt; Radar Calon ARA &amp; Beli Sore</b>.
+                          </div>
+                        )}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                           <label className="font-bold text-slate-600">Minimal Volume Harian (Rupiah)</label>
                           <Input
@@ -897,7 +910,8 @@ export default function Dashboard() {
                           </div>
                         )}
                       </div>
-                    )}
+                    </>
+                  )}
                   </CardContent>
                   <CardFooter className="flex justify-between border-t border-slate-100 pt-4">
                     <Button

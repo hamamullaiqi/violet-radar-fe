@@ -20,6 +20,7 @@ import {
   Loader2,
   RefreshCw,
   Layers,
+  Check,
   CheckCircle2,
   XCircle,
   HelpCircle,
@@ -562,102 +563,374 @@ export default function TickerDetailPage() {
                     <CardContent className="p-0">
                       {/* Desktop Table View */}
                       <div className="hidden md:block overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow className="bg-slate-50/80">
-                              <TableHead className="text-xs font-bold">Tanggal</TableHead>
-                              <TableHead className="text-xs font-bold">Strategi</TableHead>
-                              <TableHead className="text-xs font-bold text-right">Entry</TableHead>
-                              <TableHead className="text-xs font-bold text-right">TP1</TableHead>
-                              <TableHead className="text-xs font-bold text-right">TP2</TableHead>
-                              <TableHead className="text-xs font-bold text-right">SL</TableHead>
-                              <TableHead className="text-xs font-bold text-center">Status</TableHead>
-                              <TableHead className="text-xs font-bold text-right">PnL</TableHead>
-                              <TableHead className="text-xs font-bold text-right">Hold</TableHead>
+                        <Table className="text-xs w-full whitespace-nowrap">
+                          <TableHeader className="bg-slate-50">
+                            <TableRow className="hover:bg-transparent border-slate-200 text-slate-500 font-bold">
+                              <TableHead className="py-2.5 px-3">Tanggal / Hold</TableHead>
+                              <TableHead className="py-2.5 px-3">Strategi</TableHead>
+                              <TableHead className="py-2.5 px-3">Setup Mode</TableHead>
+                              <TableHead className="text-right py-2.5 px-3">Entry Price</TableHead>
+                              <TableHead className="text-right py-2.5 px-3">Konfirmasi Breakout</TableHead>
+                              <TableHead className="text-right py-2.5 px-3">Target TP1</TableHead>
+                              <TableHead className="text-right py-2.5 px-3">Target TP2</TableHead>
+                              <TableHead className="text-right py-2.5 px-3">Stop Loss</TableHead>
+                              <TableHead className="text-right py-2.5 px-3">Peak Price</TableHead>
+                              <TableHead className="text-right py-2.5 px-3">Low Price</TableHead>
+                              <TableHead className="text-right py-2.5 px-3">Close Price</TableHead>
+                              <TableHead className="text-center py-2.5 px-3">Score</TableHead>
+                              <TableHead className="text-center py-2.5 px-3">Status</TableHead>
+                              <TableHead className="text-right py-2.5 px-3">PnL</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {sm.recentSignals.map((sig: any, idx: number) => (
-                              <TableRow key={sig.id || idx} className="hover:bg-slate-50/60">
-                                <TableCell className="text-xs text-slate-600 whitespace-nowrap">
-                                  {sig.signalDate}
-                                </TableCell>
-                                <TableCell className="text-xs">
-                                  <span className="font-semibold text-slate-800">{sig.strategyType}</span>
-                                  <span className="text-slate-400 ml-1">({sig.setupMode || "-"})</span>
-                                </TableCell>
-                                <TableCell className="text-xs text-right font-mono text-slate-700">
-                                  {sig.entryPrice.toLocaleString("id-ID")}
-                                </TableCell>
-                                <TableCell className="text-xs text-right font-mono text-emerald-600">
-                                  {sig.targetPrice1.toLocaleString("id-ID")}
-                                </TableCell>
-                                <TableCell className="text-xs text-right font-mono text-indigo-600">
-                                  {sig.targetPrice2.toLocaleString("id-ID")}
-                                </TableCell>
-                                <TableCell className="text-xs text-right font-mono text-rose-600">
-                                  {sig.stopLoss.toLocaleString("id-ID")}
-                                </TableCell>
-                                <TableCell className="text-center">
-                                  <Badge
-                                    variant="outline"
-                                    className={`text-[10px] px-2 py-0.5 ${signalStatusBadge(sig.status)}`}
+                            {sm.recentSignals.map((sig: any, idx: number) => {
+                              const entryVal = Number(sig.entryPrice || 0);
+                              const closeVal = Number(sig.currentPrice || sig.exitPrice || entryVal);
+                              const peakVal = sig.highSinceEntry ? Number(sig.highSinceEntry) : (entryVal > 0 ? entryVal : 0);
+                              const lowVal = sig.lowSinceEntry ? Number(sig.lowSinceEntry) : (sig.status === "HIT_SL" ? Number(sig.exitPrice || sig.stopLoss || entryVal) : Number(sig.currentPrice || entryVal));
+
+                              const pnl = sig.realizedPnLPercent !== undefined ? Number(sig.realizedPnLPercent) : undefined;
+                              const peakDiff = entryVal > 0 && peakVal > 0 ? ((peakVal - entryVal) / entryVal) * 100 : 0;
+                              const lowDiff = entryVal > 0 && lowVal > 0 ? ((lowVal - entryVal) / entryVal) * 100 : 0;
+                              const closeDiff = entryVal > 0 && closeVal > 0 ? ((closeVal - entryVal) / entryVal) * 100 : 0;
+
+                              const tp1Val = Number(sig.targetPrice1 || 0);
+                              const tp2Val = Number(sig.targetPrice2 || 0);
+                              const slVal = Number(sig.stopLoss || 0);
+
+                              const tp1Pct = entryVal > 0 && tp1Val > 0 ? ((tp1Val - entryVal) / entryVal) * 100 : 3.5;
+                              const tp2Pct = entryVal > 0 && tp2Val > 0 ? ((tp2Val - entryVal) / entryVal) * 100 : 7.0;
+                              const slPct = entryVal > 0 && slVal > 0 ? ((slVal - entryVal) / entryVal) * 100 : -2.5;
+
+                              const holdDays = sig.holdingDays !== undefined && sig.holdingDays !== null
+                                ? sig.holdingDays
+                                : (sig.status !== "ACTIVE" && sig.status !== "PENDING" ? 1 : 0);
+                              const holdDaysBadge = `${holdDays} hr`;
+
+                              const isHitTp1 = sig.status === "HIT_TP1";
+                              const isHitTp2 = sig.status === "HIT_TP2";
+                              const isHitSl = sig.status === "HIT_SL";
+                              const isActive = sig.status === "ACTIVE";
+
+                              const stratType = sig.strategyType || "";
+                              const isRadar = stratType.includes("RADAR") || stratType.includes("CALON_ARA") || stratType.includes("BELI_SORE");
+
+                              return (
+                                <TableRow key={sig.id || idx} className="border-slate-100 hover:bg-slate-50">
+                                  {/* TANGGAL / HOLD */}
+                                  <TableCell className="py-2.5 px-3 font-mono text-[11px] whitespace-nowrap">
+                                    <div className="font-semibold text-slate-800">{sig.signalDate}</div>
+                                    <div className="text-[10px] text-slate-400">Hold: {holdDaysBadge}</div>
+                                  </TableCell>
+
+                                  {/* STRATEGI */}
+                                  <TableCell className="py-2.5 px-3">
+                                    <Badge
+                                      variant="outline"
+                                      className={
+                                        isRadar
+                                          ? "border-rose-300 bg-rose-50 text-rose-800 text-[10px] font-bold"
+                                          : stratType.includes("SWING")
+                                          ? "border-blue-200 bg-blue-50 text-blue-800 text-[10px]"
+                                          : stratType.includes("BSJP")
+                                          ? "border-emerald-200 bg-emerald-50 text-emerald-800 text-[10px]"
+                                          : "border-purple-200 bg-purple-50 text-purple-800 text-[10px]"
+                                      }
+                                    >
+                                      {isRadar ? "CALON ARA & BELI SORE" : stratType}
+                                    </Badge>
+                                  </TableCell>
+
+                                  {/* SETUP MODE */}
+                                  <TableCell className="py-2.5 px-3 font-mono text-[10px] text-slate-600">
+                                    {sig.setupMode === "BELI_SORE" ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200">
+                                        🔥 BELI SORE
+                                      </span>
+                                    ) : sig.setupMode === "WATCH" ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                        👀 WATCHLIST
+                                      </span>
+                                    ) : (
+                                      <span className="font-semibold text-slate-600">{sig.setupMode || "-"}</span>
+                                    )}
+                                  </TableCell>
+
+                                  {/* ENTRY PRICE */}
+                                  <TableCell className="text-right font-mono font-medium text-slate-700 py-2.5 px-3">
+                                    Rp {entryVal.toLocaleString("id-ID")}
+                                  </TableCell>
+
+                                  {/* KONFIRMASI BREAKOUT */}
+                                  <TableCell className="text-right py-2.5 px-3">
+                                    {sig.confirmationPrice || sig.breakoutPrice ? (
+                                      <div className="inline-flex flex-col items-end">
+                                        <span className="font-mono font-bold text-amber-600 text-[11px]">
+                                          Rp {Number(sig.confirmationPrice || sig.breakoutPrice).toLocaleString("id-ID")}
+                                        </span>
+                                        {sig.confirmationTriggerPct ? (
+                                          <span className="text-[9px] text-amber-700 font-bold bg-amber-50 border border-amber-200 px-1 rounded">
+                                            +{sig.confirmationTriggerPct}%
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                    ) : (
+                                      <span className="text-slate-300 font-mono text-[11px]">-</span>
+                                    )}
+                                  </TableCell>
+
+                                  {/* TARGET TP1 */}
+                                  <TableCell className="text-right py-2.5 px-3">
+                                    {isHitTp1 ? (
+                                      <div className="inline-flex items-center justify-end gap-1 font-mono font-extrabold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-300 shadow-2xs">
+                                        <span>Rp {tp1Val.toLocaleString("id-ID")} (+{tp1Pct.toFixed(1)}%)</span>
+                                        <span className="inline-flex items-center gap-0.5 text-[9px] font-bold bg-emerald-600 text-white rounded px-1.5 py-0.2">
+                                          <Check className="h-2.5 w-2.5 stroke-[3]" /> Hit TP1 ({holdDaysBadge})
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <span className="font-mono font-bold text-emerald-600">
+                                        Rp {tp1Val.toLocaleString("id-ID")}
+                                      </span>
+                                    )}
+                                  </TableCell>
+
+                                  {/* TARGET TP2 */}
+                                  <TableCell className="text-right py-2.5 px-3">
+                                    {isHitTp2 ? (
+                                      <div className="inline-flex items-center justify-end gap-1 font-mono font-extrabold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-300 shadow-2xs">
+                                        <span>Rp {tp2Val.toLocaleString("id-ID")} (+{tp2Pct.toFixed(1)}%)</span>
+                                        <span className="inline-flex items-center gap-0.5 text-[9px] font-bold bg-indigo-600 text-white rounded px-1.5 py-0.2">
+                                          <Zap className="h-2.5 w-2.5 fill-white" /> Hit TP2 ({holdDaysBadge})
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <span className="font-mono font-bold text-indigo-600">
+                                        Rp {tp2Val.toLocaleString("id-ID")}
+                                      </span>
+                                    )}
+                                  </TableCell>
+
+                                  {/* STOP LOSS */}
+                                  <TableCell className="text-right py-2.5 px-3">
+                                    {isHitSl ? (
+                                      <div className="inline-flex items-center justify-end gap-1 font-mono font-extrabold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-300">
+                                        <span>Rp {slVal.toLocaleString("id-ID")} ({slPct.toFixed(1)}%)</span>
+                                        <span className="inline-flex items-center gap-0.5 text-[9px] font-bold bg-rose-600 text-white rounded px-1.5 py-0.2">
+                                          <ShieldAlert className="h-2.5 w-2.5" /> Hit SL ({holdDaysBadge})
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <span className="font-mono text-rose-600 font-medium">
+                                        Rp {slVal.toLocaleString("id-ID")}
+                                      </span>
+                                    )}
+                                  </TableCell>
+
+                                  {/* PEAK PRICE */}
+                                  <TableCell className="text-right font-mono py-2.5 px-3">
+                                    {sig.highSinceEntry ? (
+                                      <div className={`inline-flex items-center justify-end gap-1 font-bold ${peakDiff > 0 ? "text-emerald-600" : peakDiff < 0 ? "text-rose-600" : "text-slate-700"}`}>
+                                        {peakDiff > 0 ? (
+                                          <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600" />
+                                        ) : peakDiff < 0 ? (
+                                          <ArrowDownRight className="h-3.5 w-3.5 text-rose-600" />
+                                        ) : null}
+                                        <span>Rp {peakVal.toLocaleString("id-ID")}</span>
+                                        <span className="text-[10px] font-semibold">
+                                          ({peakDiff >= 0 ? "+" : ""}{peakDiff.toFixed(1)}%)
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <div className="text-slate-400 font-mono text-xs italic">-</div>
+                                    )}
+                                  </TableCell>
+
+                                  {/* LOW PRICE */}
+                                  <TableCell className="text-right font-mono py-2.5 px-3">
+                                    {lowVal > 0 ? (
+                                      <div className={`inline-flex items-center justify-end gap-1 font-bold ${lowDiff < 0 ? "text-rose-600" : "text-slate-700"}`}>
+                                        {lowDiff < 0 ? (
+                                          <ArrowDownRight className="h-3.5 w-3.5 text-rose-600" />
+                                        ) : (
+                                          <ArrowUpRight className="h-3.5 w-3.5 text-slate-400" />
+                                        )}
+                                        <span>Rp {lowVal.toLocaleString("id-ID")}</span>
+                                        <span className="text-[10px] font-semibold">
+                                          ({lowDiff >= 0 ? "+" : ""}{lowDiff.toFixed(1)}%)
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <div className="text-slate-400 font-mono text-xs italic">-</div>
+                                    )}
+                                  </TableCell>
+
+                                  {/* CLOSE PRICE */}
+                                  <TableCell className="text-right font-mono py-2.5 px-3">
+                                    <div className={`inline-flex items-center justify-end gap-1 font-bold ${closeDiff > 0 ? "text-emerald-600" : closeDiff < 0 ? "text-rose-600" : "text-slate-700"}`}>
+                                      {closeDiff > 0 ? (
+                                        <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600" />
+                                      ) : closeDiff < 0 ? (
+                                        <ArrowDownRight className="h-3.5 w-3.5 text-rose-600" />
+                                      ) : null}
+                                      <span>Rp {closeVal.toLocaleString("id-ID")}</span>
+                                      <span className="text-[10px] font-semibold">
+                                        ({closeDiff >= 0 ? "+" : ""}{closeDiff.toFixed(1)}%)
+                                      </span>
+                                    </div>
+                                  </TableCell>
+
+                                  {/* SCORE */}
+                                  <TableCell className="text-center py-2.5 px-3">
+                                    <Badge className="bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-100 font-mono text-[10px]">
+                                      {sig.score ? Number(sig.score).toFixed(0) : 80}
+                                    </Badge>
+                                  </TableCell>
+
+                                  {/* STATUS */}
+                                  <TableCell className="text-center py-2.5 px-3">
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-[10px] px-2 py-0.5 ${signalStatusBadge(sig.status)}`}
+                                    >
+                                      {sig.status}
+                                    </Badge>
+                                  </TableCell>
+
+                                  {/* PNL */}
+                                  <TableCell
+                                    className={`text-xs text-right font-bold font-mono py-2.5 px-3 ${pctColor(sig.realizedPnLPercent || 0)}`}
                                   >
-                                    {sig.status}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell
-                                  className={`text-xs text-right font-bold font-mono ${pctColor(sig.realizedPnLPercent || 0)}`}
-                                >
-                                  {sig.realizedPnLPercent !== undefined
-                                    ? `${sig.realizedPnLPercent >= 0 ? "+" : ""}${sig.realizedPnLPercent}%`
-                                    : "-"}
-                                </TableCell>
-                                <TableCell className="text-xs text-right text-slate-500">
-                                  {sig.holdingDays !== undefined ? `${sig.holdingDays}d` : "-"}
-                                </TableCell>
-                              </TableRow>
-                            ))}
+                                    {sig.realizedPnLPercent !== undefined
+                                      ? `${sig.realizedPnLPercent >= 0 ? "+" : ""}${sig.realizedPnLPercent}%`
+                                      : "-"}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
                           </TableBody>
                         </Table>
                       </div>
 
                       {/* Mobile Card List View */}
                       <div className="md:hidden divide-y divide-slate-100">
-                        {sm.recentSignals.map((sig: any, idx: number) => (
-                          <div key={sig.id || idx} className="p-4 space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="font-bold text-xs text-slate-900">{sig.strategyType}</span>
-                              <Badge
-                                variant="outline"
-                                className={`text-[10px] px-2 py-0.5 ${signalStatusBadge(sig.status)}`}
-                              >
-                                {sig.status}
-                              </Badge>
+                        {sm.recentSignals.map((sig: any, idx: number) => {
+                          const entryVal = Number(sig.entryPrice || 0);
+                          const tp1Val = Number(sig.targetPrice1 || 0);
+                          const tp2Val = Number(sig.targetPrice2 || 0);
+                          const slVal = Number(sig.stopLoss || 0);
+                          const peakVal = sig.highSinceEntry ? Number(sig.highSinceEntry) : (entryVal > 0 ? entryVal : 0);
+                          const lowVal = sig.lowSinceEntry ? Number(sig.lowSinceEntry) : (sig.status === "HIT_SL" ? Number(sig.exitPrice || sig.stopLoss || entryVal) : Number(sig.currentPrice || entryVal));
+                          const closeVal = Number(sig.currentPrice || sig.exitPrice || entryVal);
+                          const peakDiff = entryVal > 0 && peakVal > 0 ? ((peakVal - entryVal) / entryVal) * 100 : 0;
+                          const lowDiff = entryVal > 0 && lowVal > 0 ? ((lowVal - entryVal) / entryVal) * 100 : 0;
+                          const closeDiff = entryVal > 0 && closeVal > 0 ? ((closeVal - entryVal) / entryVal) * 100 : 0;
+                          const holdDays = sig.holdingDays !== undefined && sig.holdingDays !== null
+                            ? sig.holdingDays
+                            : (sig.status !== "ACTIVE" && sig.status !== "PENDING" ? 1 : 0);
+
+                          return (
+                            <div key={sig.id || idx} className="p-4 space-y-2.5">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-bold text-xs text-slate-900">{sig.strategyType}</span>
+                                  {sig.setupMode && (
+                                    <span className="text-[10px] text-slate-500 font-mono">({sig.setupMode})</span>
+                                  )}
+                                </div>
+                                <Badge
+                                  variant="outline"
+                                  className={`text-[10px] px-2 py-0.5 ${signalStatusBadge(sig.status)}`}
+                                >
+                                  {sig.status}
+                                </Badge>
+                              </div>
+
+                              <div className="text-[11px] text-slate-400 font-mono">
+                                {sig.signalDate} • Hold: {holdDays} hr
+                              </div>
+
+                              {/* Row 1: Entry | Konfirmasi | SL */}
+                              <div className="grid grid-cols-3 gap-2 text-center p-2 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                                <div>
+                                  <span className="block text-[9px] text-slate-400 font-sans">Entry</span>
+                                  <span className="font-bold text-slate-900 font-mono">
+                                    Rp {entryVal.toLocaleString("id-ID")}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="block text-[9px] text-slate-400 font-sans">Konfirmasi</span>
+                                  <span className="font-bold text-amber-600 font-mono">
+                                    {sig.confirmationPrice || sig.breakoutPrice
+                                      ? `Rp ${(sig.confirmationPrice || sig.breakoutPrice).toLocaleString("id-ID")}`
+                                      : "-"}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="block text-[9px] text-slate-400 font-sans">SL</span>
+                                  <span className="font-bold text-rose-600 font-mono">
+                                    Rp {slVal.toLocaleString("id-ID")}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Row 2: TP1 | TP2 | Close */}
+                              <div className="grid grid-cols-3 gap-2 text-center p-2 rounded-xl bg-slate-50/50 border border-slate-100 text-xs">
+                                <div>
+                                  <span className="block text-[9px] text-slate-400 font-sans">TP1</span>
+                                  <span className="font-bold text-emerald-600 font-mono">
+                                    Rp {tp1Val.toLocaleString("id-ID")}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="block text-[9px] text-slate-400 font-sans">TP2</span>
+                                  <span className="font-bold text-indigo-600 font-mono">
+                                    Rp {tp2Val.toLocaleString("id-ID")}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="block text-[9px] text-slate-400 font-sans">Close</span>
+                                  <span className="font-bold text-slate-900 font-mono">
+                                    Rp {closeVal.toLocaleString("id-ID")}
+                                  </span>
+                                  <span className={`text-[9px] font-bold block ${closeDiff >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                                    {closeDiff >= 0 ? "+" : ""}{closeDiff.toFixed(1)}%
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Row 3: Peak Price | Low Price | PnL */}
+                              <div className="grid grid-cols-3 gap-2 text-center p-2 rounded-xl bg-slate-50/30 border border-slate-100 text-xs">
+                                <div>
+                                  <span className="block text-[9px] text-slate-400 font-sans">Peak Price</span>
+                                  <span className="font-bold text-slate-900 font-mono">
+                                    Rp {peakVal.toLocaleString("id-ID")}
+                                  </span>
+                                  <span className="text-[9px] text-emerald-600 font-bold block">
+                                    +{peakDiff.toFixed(1)}%
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="block text-[9px] text-slate-400 font-sans">Low Price</span>
+                                  <span className="font-bold text-slate-700 font-mono">
+                                    Rp {lowVal.toLocaleString("id-ID")}
+                                  </span>
+                                  <span className="text-[9px] text-slate-500 font-semibold block">
+                                    ({lowDiff >= 0 ? "+" : ""}{lowDiff.toFixed(1)}%)
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="block text-[9px] text-slate-400 font-sans">Realized PnL</span>
+                                  <span className={`font-bold font-mono text-xs ${pctColor(sig.realizedPnLPercent || 0)}`}>
+                                    {sig.realizedPnLPercent !== undefined
+                                      ? `${sig.realizedPnLPercent >= 0 ? "+" : ""}${sig.realizedPnLPercent}%`
+                                      : "-"}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                            <div className="text-[11px] text-slate-400">{sig.signalDate}</div>
-                            <div className="grid grid-cols-4 gap-2 pt-1 font-mono text-xs text-center">
-                              <div className="bg-slate-50 p-1.5 rounded">
-                                <span className="block text-[9px] text-slate-400 font-sans">Entry</span>
-                                {sig.entryPrice.toLocaleString("id-ID")}
-                              </div>
-                              <div className="bg-emerald-50 text-emerald-700 p-1.5 rounded">
-                                <span className="block text-[9px] text-emerald-500 font-sans">TP1</span>
-                                {sig.targetPrice1.toLocaleString("id-ID")}
-                              </div>
-                              <div className="bg-rose-50 text-rose-700 p-1.5 rounded">
-                                <span className="block text-[9px] text-rose-500 font-sans">SL</span>
-                                {sig.stopLoss.toLocaleString("id-ID")}
-                              </div>
-                              <div className="bg-indigo-50 text-indigo-700 p-1.5 rounded">
-                                <span className="block text-[9px] text-indigo-500 font-sans">PnL</span>
-                                {sig.realizedPnLPercent !== undefined
-                                  ? `${sig.realizedPnLPercent >= 0 ? "+" : ""}${sig.realizedPnLPercent}%`
-                                  : "-"}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </CardContent>
                   </Card>
