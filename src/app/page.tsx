@@ -16,6 +16,7 @@ import {
   Zap,
   LogOut,
   User as UserIcon,
+  Users,
   SlidersHorizontal,
   ChevronRight,
   BarChart3,
@@ -574,6 +575,19 @@ export default function Dashboard() {
             <span className="font-bold text-blue-600">{marketRegime.regime} (+{marketRegime.score})</span>
           </div>
 
+          {/* User Management Button (ADMIN Only) */}
+          {user.role === "ADMIN" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push("/users")}
+              className="hidden lg:flex items-center gap-1.5 text-xs font-bold border-blue-200 text-blue-700 bg-blue-50/50 hover:bg-blue-100/70 h-8 px-2.5"
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Kelola Pengguna</span>
+            </Button>
+          )}
+
           {/* User Profile Summary */}
           <div className="flex items-center gap-1.5 sm:gap-2 border-l border-slate-200 pl-2 sm:pl-4">
             <div className="text-right hidden sm:block">
@@ -607,8 +621,16 @@ export default function Dashboard() {
                     </span>
                   </div>
                 </div>
-                <DialogFooter className="w-full pt-2">
-                  <Button onClick={logout} variant="outline" className="w-full border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 font-semibold">
+                <DialogFooter className="w-full flex-col gap-2 pt-2 sm:flex-col sm:space-x-0">
+                  {user.role === "ADMIN" && (
+                    <Button
+                      onClick={() => router.push("/users")}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs h-9"
+                    >
+                      <Users className="h-4 w-4 mr-1.5" /> Buka Manajemen Pengguna
+                    </Button>
+                  )}
+                  <Button onClick={logout} variant="outline" className="w-full border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 font-semibold text-xs h-9">
                     <LogOut className="h-4 w-4 mr-1.5" /> Keluar dari Akun
                   </Button>
                 </DialogFooter>

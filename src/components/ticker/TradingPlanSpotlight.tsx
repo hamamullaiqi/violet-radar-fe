@@ -104,21 +104,31 @@ export default function TradingPlanSpotlight({
 
       {/* Confirmation Breakout Banner */}
       {plan.confirmationPrice && (
-        <div className="relative z-10 mt-4 p-3 rounded-xl bg-amber-500/15 border border-amber-400/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs backdrop-blur-xs">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="px-2 py-0.5 rounded-md bg-amber-500/30 text-amber-200 font-extrabold text-[11px] border border-amber-400/40">
-              🎯 Konfirmasi Breakout
+        <div className="relative z-10 mt-4 p-3.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-orange-500/15 to-amber-500/20 border border-amber-400/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs backdrop-blur-sm shadow-inner">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="px-2.5 py-1 rounded-lg bg-amber-500/30 text-amber-200 font-black text-xs border border-amber-400/50 flex items-center gap-1.5 shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              🎯 Konfirmasi Breakout / Trigger Entry
             </span>
-            <span className="font-mono font-black text-amber-300 text-base">
+            <span className="font-mono font-black text-amber-300 text-lg tracking-tight">
               {fmtPrice(plan.confirmationPrice)}
             </span>
-            {plan.confirmationTriggerPct ? (
-              <span className="text-[10px] font-bold text-amber-300 bg-amber-400/20 border border-amber-400/30 px-1.5 py-0.5 rounded">
-                +{plan.confirmationTriggerPct}%
+            {plan.confirmationTriggerPct !== undefined ? (
+              <span className="text-xs font-black text-amber-200 bg-amber-400/25 border border-amber-400/40 px-2 py-0.5 rounded-md">
+                {plan.confirmationTriggerPct >= 0 ? `+${plan.confirmationTriggerPct}%` : `${plan.confirmationTriggerPct}%`}
               </span>
             ) : null}
+            {cur >= plan.confirmationPrice ? (
+              <span className="text-[11px] font-extrabold text-emerald-300 bg-emerald-500/25 border border-emerald-400/40 px-2 py-0.5 rounded-md flex items-center gap-1">
+                ✓ Level Terlewati (Breakout Terkonfirmasi)
+              </span>
+            ) : (
+              <span className="text-[11px] font-bold text-amber-200/90 bg-black/25 border border-amber-400/30 px-2 py-0.5 rounded-md">
+                Menunggu Penembusan
+              </span>
+            )}
           </div>
-          <span className="text-slate-300 text-[11px]">
+          <span className="text-slate-200 text-xs font-medium">
             {plan.confirmationNote || "Pantau lonjakan volume jika level ini ditembus menuju ARA!"}
           </span>
         </div>

@@ -156,9 +156,8 @@ export default function SignalMonitoringCard() {
     fetchSignals();
   }, [activeTab, strategyFilter, searchTicker, page, limit]);
 
+  const radarStats = strategyMetrics?.RADAR_CALON_ARA_BELI_SORE || { count: 0, avgPnL: 0, winRate: 0 };
   const swingStats = strategyMetrics?.SWING || { count: 0, avgPnL: 0, winRate: 0 };
-  const bsjpStats = strategyMetrics?.BSJP || { count: 0, avgPnL: 0, winRate: 0 };
-  const araStats = strategyMetrics?.ARA_HUNTER || { count: 0, avgPnL: 0, winRate: 0 };
 
   return (
     <>
@@ -174,7 +173,7 @@ export default function SignalMonitoringCard() {
               <SignalStatusLegendDialog />
             </div>
             <CardDescription className="text-xs mt-0.5">
-              Sinyal terfokus: Maksimal 5 Kandidat (3 Swing + 2 BSJP) dengan skor tertinggi & probabilitas maksimal. ARA Hunter dinonaktifkan digantikan Radar Calon ARA.
+              Sinyal terfokus: Radar Calon ARA & Beli Sore (Fokus Top 5) dan SWING Trade (Fokus Top 3) dengan skor tertinggi & probabilitas maksimal.
             </CardDescription>
           </div>
 
@@ -213,10 +212,8 @@ export default function SignalMonitoringCard() {
               </SelectTrigger>
               <SelectContent className="bg-white border-slate-200 text-slate-900 text-xs">
                 <SelectItem value="ALL">Semua Strategi</SelectItem>
-                <SelectItem value="SWING_DEFAULT">SWING (Fokus Top 3)</SelectItem>
-                <SelectItem value="BSJP_DEFAULT">BSJP (Fokus Top 2)</SelectItem>
                 <SelectItem value="RADAR_CALON_ARA_BELI_SORE">CALON ARA & BELI SORE</SelectItem>
-                <SelectItem value="ARA_HUNTER_DEFAULT" disabled className="text-slate-400">ARA HUNTER (Nonaktif)</SelectItem>
+                <SelectItem value="SWING_DEFAULT">SWING (Fokus Top 3)</SelectItem>
               </SelectContent>
             </Select>
 
@@ -547,8 +544,30 @@ export default function SignalMonitoringCard() {
 
         {/* TAB & PER-STRATEGY METRICS SUMMARY BAR */}
         <div className="px-4 py-3 bg-slate-50 border-b border-slate-100">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 text-xs">
-            {/* STRATEGY 1: SWING */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 text-xs">
+            {/* STRATEGY 1: RADAR CALON ARA & BELI SORE */}
+            <div className="bg-white p-2.5 rounded-md border border-slate-200 shadow-2xs">
+              <div className="flex items-center justify-between text-slate-500 text-[10px] font-bold uppercase">
+                <span className="text-purple-700">BELI SORE & ARA</span>
+                <Badge variant="outline" className="text-[9px] px-1 py-0 border-purple-200 bg-purple-50 text-purple-800">
+                  {radarStats.count} sinyal
+                </Badge>
+              </div>
+              <div className="mt-1 flex items-baseline justify-between font-mono">
+                <span className="text-[11px] text-slate-500">Net Return:</span>
+                <span className={`text-xs font-bold ${(radarStats.totalPnL !== undefined ? radarStats.totalPnL : radarStats.avgPnL) >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                  {radarStats.totalPnL !== undefined
+                    ? `${radarStats.totalPnL >= 0 ? "+" : ""}${radarStats.totalPnL}%`
+                    : `${radarStats.avgPnL >= 0 ? "+" : ""}${radarStats.avgPnL}%`}
+                </span>
+              </div>
+              <div className="text-[10px] text-slate-400 font-mono flex items-center justify-between mt-0.5">
+                <span>Avg: <span className="text-slate-600 font-bold">{Number(radarStats.avgPnL || 0) >= 0 ? `+${Number(radarStats.avgPnL || 0).toFixed(2)}%` : `${Number(radarStats.avgPnL || 0).toFixed(2)}%`}</span></span>
+                <span>WR: <span className="font-bold text-slate-600">{radarStats.winRate}%</span></span>
+              </div>
+            </div>
+
+            {/* STRATEGY 2: SWING */}
             <div className="bg-white p-2.5 rounded-md border border-slate-200 shadow-2xs">
               <div className="flex items-center justify-between text-slate-500 text-[10px] font-bold uppercase">
                 <span className="text-blue-700">SWING</span>
@@ -557,51 +576,16 @@ export default function SignalMonitoringCard() {
                 </Badge>
               </div>
               <div className="mt-1 flex items-baseline justify-between font-mono">
-                <span className="text-[11px] text-slate-500">Avg PnL:</span>
-                <span className={`text-xs font-bold ${swingStats.avgPnL >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                  {swingStats.avgPnL >= 0 ? `+${swingStats.avgPnL}%` : `${swingStats.avgPnL}%`}
+                <span className="text-[11px] text-slate-500">Net Return:</span>
+                <span className={`text-xs font-bold ${(swingStats.totalPnL !== undefined ? swingStats.totalPnL : swingStats.avgPnL) >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                  {swingStats.totalPnL !== undefined
+                    ? `${swingStats.totalPnL >= 0 ? "+" : ""}${Number(swingStats.totalPnL).toFixed(1)}%`
+                    : `${swingStats.avgPnL >= 0 ? "+" : ""}${Number(swingStats.avgPnL).toFixed(2)}%`}
                 </span>
               </div>
-              <div className="text-[10px] text-slate-400 font-mono text-right mt-0.5">
-                Win Rate: <span className="font-bold text-slate-600">{swingStats.winRate}%</span>
-              </div>
-            </div>
-
-            {/* STRATEGY 2: BSJP */}
-            <div className="bg-white p-2.5 rounded-md border border-slate-200 shadow-2xs">
-              <div className="flex items-center justify-between text-slate-500 text-[10px] font-bold uppercase">
-                <span className="text-emerald-700">BSJP</span>
-                <Badge variant="outline" className="text-[9px] px-1 py-0 border-emerald-200 bg-emerald-50 text-emerald-800">
-                  {bsjpStats.count} sinyal
-                </Badge>
-              </div>
-              <div className="mt-1 flex items-baseline justify-between font-mono">
-                <span className="text-[11px] text-slate-500">Avg PnL:</span>
-                <span className={`text-xs font-bold ${bsjpStats.avgPnL >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                  {bsjpStats.avgPnL >= 0 ? `+${bsjpStats.avgPnL}%` : `${bsjpStats.avgPnL}%`}
-                </span>
-              </div>
-              <div className="text-[10px] text-slate-400 font-mono text-right mt-0.5">
-                Win Rate: <span className="font-bold text-slate-600">{bsjpStats.winRate}%</span>
-              </div>
-            </div>
-
-            {/* STRATEGY 3: ARA HUNTER */}
-            <div className="bg-white p-2.5 rounded-md border border-slate-200 shadow-2xs">
-              <div className="flex items-center justify-between text-slate-500 text-[10px] font-bold uppercase">
-                <span className="text-amber-700">ARA HUNTER</span>
-                <Badge variant="outline" className="text-[9px] px-1 py-0 border-amber-200 bg-amber-50 text-amber-800">
-                  {araStats.count} sinyal
-                </Badge>
-              </div>
-              <div className="mt-1 flex items-baseline justify-between font-mono">
-                <span className="text-[11px] text-slate-500">Avg PnL:</span>
-                <span className={`text-xs font-bold ${araStats.avgPnL >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                  {araStats.avgPnL >= 0 ? `+${araStats.avgPnL}%` : `${araStats.avgPnL}%`}
-                </span>
-              </div>
-              <div className="text-[10px] text-slate-400 font-mono text-right mt-0.5">
-                Win Rate: <span className="font-bold text-slate-600">{araStats.winRate}%</span>
+              <div className="text-[10px] text-slate-400 font-mono flex items-center justify-between mt-0.5">
+                <span>Avg: <span className="text-slate-600 font-bold">{Number(swingStats.avgPnL || 0) >= 0 ? `+${Number(swingStats.avgPnL || 0).toFixed(2)}%` : `${Number(swingStats.avgPnL || 0).toFixed(2)}%`}</span></span>
+                <span>WR: <span className="font-bold text-slate-600">{swingStats.winRate}%</span></span>
               </div>
             </div>
 

@@ -152,14 +152,13 @@ export default function OverviewStatistics() {
             <div className="flex flex-col gap-1">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Strategi</label>
               <Select value={strategyType} onValueChange={setStrategyType}>
-                <SelectTrigger className="w-32 border-slate-200 bg-slate-50 text-slate-900 text-xs h-8">
+                <SelectTrigger className="w-40 border-slate-200 bg-slate-50 text-slate-900 text-xs h-8">
                   <SelectValue placeholder="Strategi" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-slate-200 text-slate-900 text-xs">
                   <SelectItem value="ALL">Semua Strategi</SelectItem>
+                  <SelectItem value="RADAR_CALON_ARA_BELI_SORE">BELI SORE & ARA</SelectItem>
                   <SelectItem value="SWING">SWING</SelectItem>
-                  <SelectItem value="BSJP">BSJP</SelectItem>
-                  <SelectItem value="ARA_HUNTER">ARA HUNTER</SelectItem>
                   <SelectItem value="REVERSAL">REVERSAL</SelectItem>
                 </SelectContent>
               </Select>
@@ -174,6 +173,8 @@ export default function OverviewStatistics() {
                 </SelectTrigger>
                 <SelectContent className="bg-white border-slate-200 text-slate-900 text-xs">
                   <SelectItem value="ALL">Semua Setup</SelectItem>
+                  <SelectItem value="BELI_SORE">BELI SORE</SelectItem>
+                  <SelectItem value="CALON_ARA">CALON ARA</SelectItem>
                   <SelectItem value="PULLBACK">PULLBACK</SelectItem>
                   <SelectItem value="BREAKOUT">BREAKOUT</SelectItem>
                   <SelectItem value="CROSSOVER">CROSSOVER</SelectItem>
@@ -313,7 +314,9 @@ export default function OverviewStatistics() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Expectancy per Posisi</span>
-                    <strong className="text-blue-600 font-mono">+{stats.expectancyPercent}%</strong>
+                    <strong className={`font-mono ${Number(stats.expectancyPercent || 0) >= 0 ? "text-blue-600" : "text-rose-600"}`}>
+                      {Number(stats.expectancyPercent || 0) >= 0 ? `+${stats.expectancyPercent}%` : `${stats.expectancyPercent}%`}
+                    </strong>
                   </div>
                 </div>
               </div>
@@ -331,11 +334,13 @@ export default function OverviewStatistics() {
                   </div>
                   <div className="flex justify-between pb-1 border-b border-slate-100">
                     <span className="text-slate-500">Rata-rata Loss</span>
-                    <strong className="text-rose-600 font-mono">-{stats.avgLossPercent}%</strong>
+                    <strong className="text-rose-600 font-mono">-{Math.abs(Number(stats.avgLossPercent || 0)).toFixed(2)}%</strong>
                   </div>
                   <div className="flex justify-between pb-1 border-b border-slate-100">
                     <span className="text-slate-500">Rata-rata Profit/Posisi</span>
-                    <strong className="text-slate-700 font-mono">+{stats.avgTradePnLPercent}%</strong>
+                    <strong className={`font-mono ${Number(stats.avgTradePnLPercent || 0) >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                      {Number(stats.avgTradePnLPercent || 0) >= 0 ? `+${stats.avgTradePnLPercent}%` : `${stats.avgTradePnLPercent}%`}
+                    </strong>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Avg. Durasi Simpan</span>
@@ -356,11 +361,11 @@ export default function OverviewStatistics() {
                 <div className="space-y-2.5 text-xs">
                   <div className="flex justify-between pb-1 border-b border-slate-100">
                     <span className="text-slate-500">Avg. Favorable (MFE)</span>
-                    <strong className="text-emerald-600 font-mono">+{stats.avgMfePercent}%</strong>
+                    <strong className="text-emerald-600 font-mono">+{Math.abs(Number(stats.avgMfePercent || 0)).toFixed(2)}%</strong>
                   </div>
                   <div className="flex justify-between pb-1 border-b border-slate-100">
                     <span className="text-slate-500">Avg. Adverse (MAE)</span>
-                    <strong className="text-rose-600 font-mono">-{stats.avgMaePercent}%</strong>
+                    <strong className="text-rose-600 font-mono">-{Math.abs(Number(stats.avgMaePercent || 0)).toFixed(2)}%</strong>
                   </div>
                   <div className="flex justify-between pb-1 border-b border-slate-100">
                     <span className="text-slate-500">Overflow Beyond TP2</span>

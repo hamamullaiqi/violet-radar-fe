@@ -154,6 +154,39 @@ export default function TickerDetailPage() {
   const kl = data?.keyLevels;
   const vd = data?.verdict;
 
+  // 🎯 Konfirmasi Harga (Breakout / Trigger Entry)
+  const curPrice = ps?.currentPrice || 0;
+  const confirmationPrice =
+    vd?.tradingPlan?.confirmationPrice ||
+    sm?.recentSignals?.[0]?.confirmationPrice ||
+    sm?.recentSignals?.[0]?.breakoutPrice ||
+    kl?.resistance1 ||
+    curPrice;
+  const confirmationTriggerPct =
+    vd?.tradingPlan?.confirmationTriggerPct !== undefined
+      ? vd.tradingPlan.confirmationTriggerPct
+      : curPrice > 0 && confirmationPrice
+      ? Number((((confirmationPrice - curPrice) / curPrice) * 100).toFixed(2))
+      : 0;
+  const isConfirmedBreakout = curPrice >= confirmationPrice;
+  const confirmationNote =
+    vd?.tradingPlan?.confirmationNote ||
+    (sm?.recentSignals?.[0] as any)?.confirmationNote ||
+    "Pantau lonjakan volume jika harga menembus level ini untuk memvalidasi momentum kelanjutan tren.";
+
+  // 🌊 Indikator VWAP (Volume Weighted Average Price)
+  const vwapVal = mi?.vwapAnalysis?.vwap || ps?.vwap || curPrice;
+  const vwapDiffPct =
+    curPrice > 0 && vwapVal > 0
+      ? Number((((curPrice - vwapVal) / vwapVal) * 100).toFixed(2))
+      : 0;
+
+  // Aturan warna VWAP:
+  // "kalo vwap lebih oke warna hijau kalo tengah netral kalo diatas harus merah"
+  const isVwapBetter = curPrice > vwapVal && vwapDiffPct > 0.1;
+  const isVwapAbove = curPrice < vwapVal && vwapDiffPct < -0.1;
+  const isVwapNeutral = !isVwapBetter && !isVwapAbove;
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
       {/* ── STICKY TOP APP BAR ── */}
@@ -491,12 +524,59 @@ export default function TickerDetailPage() {
                 {vd?.summaryIndonesian && (
                   <Card className="border-slate-200 bg-white shadow-sm">
                     <CardHeader className="pb-3 border-b border-slate-100">
-                      <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-indigo-600" />
-                        Ringkasan Eksekutif & Narasi Pasar
+                      <CardTitle className="text-sm font-bold text-slate-800 flex items-center justify-between flex-wrap gap-2">
+                        <span className="flex items-center gap-2">
+                          <Activity className="w-4 h-4 text-indigo-600" />
+                          Ringkasan Eksekutif & Narasi Pasar
+                        </span>
+                        {confirmationPrice > 0 && (
+                          <Badge
+                            variant="outline"
+                            className={`text-xs font-mono font-bold flex items-center gap-1.5 ${
+                              isConfirmedBreakout
+                                ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                                : "border-amber-300 bg-amber-50 text-amber-800"
+                            }`}
+                          >
+                            <Target className="w-3.5 h-3.5" />
+                            <span>Trigger Breakout: Rp {confirmationPrice.toLocaleString("id-ID")}</span>
+                            <span className="opacity-80">
+                              ({confirmationTriggerPct >= 0 ? `+${confirmationTriggerPct}%` : `${confirmationTriggerPct}%`})
+                            </span>
+                          </Badge>
+                        )}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="p-4 sm:p-5">
+                      {/* Highlight Konfirmasi Breakout di Ringkasan Eksekutif */}
+                      {confirmationPrice > 0 && (
+                        <div className="mb-4 p-3.5 rounded-xl bg-gradient-to-r from-amber-50 via-orange-50/40 to-amber-50 border border-amber-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs">
+                          <div className="flex items-center gap-2.5 flex-wrap">
+                            <span className="px-2.5 py-1 rounded-md bg-amber-500 text-white font-extrabold text-[11px] tracking-wide flex items-center gap-1 shadow-xs">
+                              <Target className="w-3 h-3" />
+                              KONFIRMASI BREAKOUT
+                            </span>
+                            <span className="font-mono font-black text-amber-950 text-base">
+                              Rp {confirmationPrice.toLocaleString("id-ID")}
+                            </span>
+                            <span className="font-bold text-amber-800 bg-amber-200/70 border border-amber-300/80 px-2 py-0.5 rounded-md text-[11px]">
+                              {confirmationTriggerPct >= 0 ? `+${confirmationTriggerPct}%` : `${confirmationTriggerPct}%`} dari penutupan
+                            </span>
+                            {isConfirmedBreakout ? (
+                              <span className="font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-md text-[11px]">
+                                ✓ Telah Terkonfirmasi
+                              </span>
+                            ) : (
+                              <span className="font-medium text-slate-600 bg-white/70 border border-slate-200 px-2 py-0.5 rounded-md text-[11px]">
+                                Menunggu Validasi Penembusan
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-amber-900/80 text-[11px] font-medium leading-tight">
+                            {confirmationNote}
+                          </span>
+                        </div>
+                      )}
                       <MarkdownNarrative content={vd.summaryIndonesian} />
                     </CardContent>
                   </Card>
@@ -1094,8 +1174,100 @@ export default function TickerDetailPage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="p-4 sm:p-5">
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        {/* RSI */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                        {/* 1. VWAP Matrix Card (Warna Hijau jika Lebih Oke, Netral jika Tengah, Merah jika VWAP di atas) */}
+                        <div
+                          className={`p-3.5 rounded-xl border transition-all ${
+                            isVwapBetter
+                              ? "border-emerald-300 bg-emerald-50/80 text-emerald-900 shadow-xs"
+                              : isVwapAbove
+                              ? "border-rose-300 bg-rose-50/80 text-rose-900 shadow-xs"
+                              : "border-amber-300 bg-amber-50/70 text-amber-900 shadow-xs"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider mb-0.5">
+                            <span className="flex items-center gap-1">
+                              <Activity className="w-3 h-3" />
+                              VWAP
+                            </span>
+                            <span
+                              className={`px-1.5 py-0.2 rounded text-[9px] font-extrabold border ${
+                                isVwapBetter
+                                  ? "bg-emerald-100 border-emerald-300 text-emerald-800"
+                                  : isVwapAbove
+                                  ? "bg-rose-100 border-rose-300 text-rose-800"
+                                  : "bg-amber-100 border-amber-300 text-amber-800"
+                              }`}
+                            >
+                              {isVwapBetter ? "Lebih Oke" : isVwapAbove ? "VWAP di Atas" : "Netral"}
+                            </span>
+                          </div>
+                          <div
+                            className={`text-xl font-black font-mono mt-0.5 ${
+                              isVwapBetter
+                                ? "text-emerald-700"
+                                : isVwapAbove
+                                ? "text-rose-700"
+                                : "text-amber-700"
+                            }`}
+                          >
+                            {fmtPrice(vwapVal)}
+                          </div>
+                          <div
+                            className={`text-[11px] font-semibold mt-1 ${
+                              isVwapBetter
+                                ? "text-emerald-800"
+                                : isVwapAbove
+                                ? "text-rose-800"
+                                : "text-amber-800"
+                            }`}
+                          >
+                            {isVwapBetter && `Buyer in Control (+${vwapDiffPct}%)`}
+                            {isVwapAbove && `Tekanan Jual (${vwapDiffPct}%)`}
+                            {isVwapNeutral && `Seimbang di VWAP (${vwapDiffPct >= 0 ? "+" : ""}${vwapDiffPct}%)`}
+                          </div>
+                        </div>
+
+                        {/* 2. Konfirmasi Breakout Matrix Card */}
+                        <div
+                          className={`p-3.5 rounded-xl border transition-all ${
+                            isConfirmedBreakout
+                              ? "border-emerald-300 bg-emerald-50/60"
+                              : "border-indigo-200 bg-indigo-50/40"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase mb-0.5">
+                            <span className="flex items-center gap-1">
+                              <Target className="w-3 h-3 text-indigo-500" />
+                              Konfirmasi
+                            </span>
+                            <span
+                              className={`px-1.5 py-0.2 rounded text-[9px] font-bold border ${
+                                isConfirmedBreakout
+                                  ? "bg-emerald-100 border-emerald-300 text-emerald-700"
+                                  : "bg-indigo-100 border-indigo-200 text-indigo-700"
+                              }`}
+                            >
+                              {isConfirmedBreakout ? "Confirmed" : "Trigger"}
+                            </span>
+                          </div>
+                          <div
+                            className={`text-xl font-black font-mono mt-0.5 ${
+                              isConfirmedBreakout ? "text-emerald-700" : "text-indigo-950"
+                            }`}
+                          >
+                            {fmtPrice(confirmationPrice)}
+                          </div>
+                          <div className="text-[11px] text-slate-600 mt-1 font-medium">
+                            {isConfirmedBreakout ? (
+                              <span className="text-emerald-700 font-bold">✓ Terkonfirmasi</span>
+                            ) : (
+                              <span>Jarak: <b className="text-indigo-700 font-bold">+{confirmationTriggerPct}%</b></span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* 3. RSI */}
                         <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/70">
                           <div className="text-[10px] font-bold text-slate-400 uppercase">RSI (14)</div>
                           <div
@@ -1114,7 +1286,7 @@ export default function TickerDetailPage() {
                           </div>
                         </div>
 
-                        {/* MACD */}
+                        {/* 4. MACD */}
                         <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/70">
                           <div className="text-[10px] font-bold text-slate-400 uppercase">MACD Hist</div>
                           <div
@@ -1133,7 +1305,7 @@ export default function TickerDetailPage() {
                           </div>
                         </div>
 
-                        {/* Volume Analysis */}
+                        {/* 5. Volume Analysis */}
                         <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/70">
                           <div className="text-[10px] font-bold text-slate-400 uppercase">Relative Volume</div>
                           <div className="text-xl font-black text-slate-900 mt-0.5">
@@ -1144,7 +1316,7 @@ export default function TickerDetailPage() {
                           </div>
                         </div>
 
-                        {/* ATR */}
+                        {/* 6. ATR */}
                         <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/70">
                           <div className="text-[10px] font-bold text-slate-400 uppercase">ATR (14)</div>
                           <div className="text-xl font-black text-slate-900 mt-0.5">

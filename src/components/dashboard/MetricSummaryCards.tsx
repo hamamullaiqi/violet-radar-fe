@@ -108,18 +108,19 @@ const MetricSummaryCards = () => {
         </CardContent>
       </Card>
 
-      {/* CARD 7: NET REALIZED PNL */}
+      {/* CARD 7: AVG TRADE PNL & NET ACCUMULATION */}
       <Card className="border-slate-200 shadow-sm bg-white hover:shadow-md transition-shadow">
         <CardHeader className="flex flex-row items-center justify-between pb-1.5 space-y-0">
-          <CardTitle className="text-xs font-semibold text-slate-500">Net Realized PnL</CardTitle>
-          <DollarSign className={`h-4 w-4 ${stats.netRealizedPnLPercent >= 0 ? "text-emerald-600" : "text-rose-600"}`} />
+          <CardTitle className="text-xs font-semibold text-slate-500">Avg Trade PnL</CardTitle>
+          <DollarSign className={`h-4 w-4 ${(stats.avgTradePnLPercent !== undefined ? stats.avgTradePnLPercent : (stats.closedPositionsCount > 0 ? stats.netRealizedPnLPercent / stats.closedPositionsCount : 0)) >= 0 ? "text-emerald-600" : "text-rose-600"}`} />
         </CardHeader>
         <CardContent>
-          <div className={`text-2xl font-extrabold ${stats.netRealizedPnLPercent >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-            {stats.netRealizedPnLPercent >= 0 ? `+${(stats.netRealizedPnLPercent || 0).toFixed(2)}%` : `${(stats.netRealizedPnLPercent || 0).toFixed(2)}%`}
+          <div className={`text-2xl font-extrabold ${(stats.avgTradePnLPercent !== undefined ? stats.avgTradePnLPercent : (stats.closedPositionsCount > 0 ? stats.netRealizedPnLPercent / stats.closedPositionsCount : 0)) >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+            {(stats.avgTradePnLPercent !== undefined ? stats.avgTradePnLPercent : (stats.closedPositionsCount > 0 ? stats.netRealizedPnLPercent / stats.closedPositionsCount : 0)) >= 0 ? "+" : ""}
+            {Number(stats.avgTradePnLPercent !== undefined ? stats.avgTradePnLPercent : (stats.closedPositionsCount > 0 ? stats.netRealizedPnLPercent / stats.closedPositionsCount : 0)).toFixed(2)}%
           </div>
           <p className="text-[10px] text-slate-400 font-medium mt-1">
-            Akumulasi performa
+            Rata-rata per posisi | Net: <span className={`font-bold ${(stats.netRealizedPnLPercent || 0) >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{(stats.netRealizedPnLPercent || 0) >= 0 ? "+" : ""}{(stats.netRealizedPnLPercent || 0).toFixed(0)}%</span>
           </p>
         </CardContent>
       </Card>
