@@ -21,6 +21,7 @@ import {
   ChevronRight,
   BarChart3,
   Radar,
+  Wallet,
 } from "lucide-react";
 import {
   Card,
@@ -65,6 +66,7 @@ import GrowthLeadersCard from "@/components/dashboard/GrowthLeadersCard";
 import LoseLeadersCard from "@/components/dashboard/LoseLeadersCard";
 import AraPatternsCard from "@/components/dashboard/AraPatternsCard";
 import SignalMonitoringCard from "@/components/dashboard/SignalMonitoringCard";
+import TradePortfolioMonitoringCard from "@/components/dashboard/TradePortfolioMonitoringCard";
 import SearchTickers from "@/components/SearchTickers";
 
 // Default Backtest/Simulation metrics as a fallback when backend is disconnected
@@ -385,12 +387,19 @@ export default function Dashboard() {
       const urlParams = new URLSearchParams(window.location.search);
       const tabParam = urlParams.get("tab") as CockpitPage;
       if (tabParam && ["overview", "radars", "signals", "strategies", "jobs"].includes(tabParam)) {
-        setActivePage(tabParam);
+        if (user?.role !== "ADMIN" && (tabParam === "strategies" || tabParam === "jobs")) {
+          setActivePage("overview");
+        } else {
+          setActivePage(tabParam);
+        }
       }
     }
-  }, []);
+  }, [user?.role]);
 
   const handlePageChange = (newPage: CockpitPage) => {
+    if (user?.role !== "ADMIN" && (newPage === "strategies" || newPage === "jobs")) {
+      return;
+    }
     setActivePage(newPage);
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
@@ -575,6 +584,18 @@ export default function Dashboard() {
             <span className="font-bold text-blue-600">{marketRegime.regime} (+{marketRegime.score})</span>
           </div>
 
+          {/* Dedicated Portfolio & Execution Page Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push("/portfolio")}
+            className="flex items-center gap-1.5 text-xs font-bold border-emerald-300 text-emerald-800 bg-emerald-50/80 hover:bg-emerald-100 h-8 px-2.5 shadow-2xs"
+          >
+            <Wallet className="w-3.5 h-3.5 text-emerald-600" />
+            <span className="hidden sm:inline">Portofolio & Eksekusi</span>
+            <span className="sm:hidden">Porto</span>
+          </Button>
+
           {/* User Management Button (ADMIN Only) */}
           {user.role === "ADMIN" && (
             <Button
@@ -691,18 +712,22 @@ export default function Dashboard() {
               icon={<Zap className="w-4 h-4" />}
               label="Sinyal Live & Trailing"
             />
-            <PageNavButton
-              active={activePage === "strategies"}
-              onClick={() => handlePageChange("strategies")}
-              icon={<SlidersHorizontal className="w-4 h-4" />}
-              label="Konfigurasi Parameter"
-            />
-            <PageNavButton
-              active={activePage === "jobs"}
-              onClick={() => handlePageChange("jobs")}
-              icon={<Clock className="w-4 h-4" />}
-              label="Control Panel & Jobs"
-            />
+            {user?.role === "ADMIN" && (
+              <>
+                <PageNavButton
+                  active={activePage === "strategies"}
+                  onClick={() => handlePageChange("strategies")}
+                  icon={<SlidersHorizontal className="w-4 h-4" />}
+                  label="Konfigurasi Parameter"
+                />
+                <PageNavButton
+                  active={activePage === "jobs"}
+                  onClick={() => handlePageChange("jobs")}
+                  icon={<Clock className="w-4 h-4" />}
+                  label="Control Panel & Jobs"
+                />
+              </>
+            )}
           </div>
         </div>
 
@@ -753,15 +778,15 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* PAGE 3: LIVE SIGNALS & DYNAMIC TRAILING STOP */}
+        {/* PAGE 3: SINYAL LIVE & TRAILING */}
         {activePage === "signals" && (
           <div className="space-y-6 animate-in fade-in-50 duration-150">
             <SignalMonitoringCard />
           </div>
         )}
 
-        {/* PAGE 4: STRATEGY PARAMETER CONFIGURATIONS */}
-        {activePage === "strategies" && (
+        {/* PAGE 4: STRATEGY CONFIGURATIONS (ADMIN ONLY) */}
+        {activePage === "strategies" && user?.role === "ADMIN" && (
           <div className="space-y-6 animate-in fade-in-50 duration-150">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -960,8 +985,8 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* PAGE 5: CONTROL PANEL & JOBS AUTOMATIONS */}
-        {activePage === "jobs" && (
+        {/* PAGE 5: CONTROL PANEL & JOBS AUTOMATIONS (ADMIN ONLY) */}
+        {activePage === "jobs" && user?.role === "ADMIN" && (
           <div className="space-y-6 animate-in fade-in-50 duration-150">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
