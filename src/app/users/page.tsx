@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import ChangePasswordModal from "@/components/ChangePasswordModal";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -80,6 +81,7 @@ export default function UserManagementPage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isResetPassOpen, setIsResetPassOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isMyChangePassOpen, setIsMyChangePassOpen] = useState(false);
 
   // Form States
   const [selectedUser, setSelectedUser] = useState<ManagedUser | null>(null);
@@ -381,6 +383,16 @@ export default function UserManagementPage() {
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-blue-600" : ""}`} />
               <span className="hidden sm:inline">Refresh</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsMyChangePassOpen(true)}
+              className="text-indigo-700 border-indigo-200 hover:bg-indigo-50 text-xs font-bold gap-1.5 cursor-pointer"
+            >
+              <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Ganti Password Saya</span>
             </Button>
 
             <Button
@@ -1003,6 +1015,12 @@ export default function UserManagementPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Change My Password Modal */}
+      <ChangePasswordModal
+        open={isMyChangePassOpen}
+        onOpenChange={setIsMyChangePassOpen}
+      />
     </div>
   );
 }

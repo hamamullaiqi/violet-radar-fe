@@ -154,25 +154,64 @@ export default function TickerDetailPage() {
   const kl = data?.keyLevels;
   const vd = data?.verdict;
 
-  // 🎯 Konfirmasi Harga (Breakout / Trigger Entry)
+  // 🎯 Momentum Entry & Major Breakout Historis
   const curPrice = ps?.currentPrice || 0;
-  const confirmationPrice =
+  const momentumEntryPrice =
+    vd?.tradingPlan?.momentumEntryPrice ||
     vd?.tradingPlan?.confirmationPrice ||
     sm?.recentSignals?.[0]?.confirmationPrice ||
     sm?.recentSignals?.[0]?.breakoutPrice ||
     kl?.resistance1 ||
     curPrice;
-  const confirmationTriggerPct =
-    vd?.tradingPlan?.confirmationTriggerPct !== undefined
+  const momentumTriggerPct =
+    vd?.tradingPlan?.momentumTriggerPct !== undefined
+      ? vd.tradingPlan.momentumTriggerPct
+      : vd?.tradingPlan?.confirmationTriggerPct !== undefined
       ? vd.tradingPlan.confirmationTriggerPct
-      : curPrice > 0 && confirmationPrice
-      ? Number((((confirmationPrice - curPrice) / curPrice) * 100).toFixed(2))
+      : curPrice > 0 && momentumEntryPrice
+      ? Number((((momentumEntryPrice - curPrice) / curPrice) * 100).toFixed(2))
       : 0;
-  const isConfirmedBreakout = curPrice >= confirmationPrice;
-  const confirmationNote =
+
+  // Major Breakout dari Data Historis & Sinyal Aktif
+  const majorBreakoutLevel =
+    vd?.tradingPlan?.majorBreakoutLevel ||
+    (sm?.recentSignals?.[0] as any)?.majorBreakoutLevel ||
+    kl?.majorBreakoutLevel ||
+    kl?.resistance1 ||
+    0;
+  const isMajorBreakout = Boolean(
+    vd?.tradingPlan?.isMajorBreakout ||
+    vd?.tradingPlan?.isBreakout ||
+    (sm?.recentSignals?.[0] as any)?.isMajorBreakout ||
+    (sm?.recentSignals?.[0] as any)?.isBreakoutConfirmed ||
+    (majorBreakoutLevel > 0 && curPrice >= majorBreakoutLevel)
+  );
+  const isConfirmedBreakout = isMajorBreakout || (curPrice >= momentumEntryPrice);
+  const confirmationPrice = momentumEntryPrice;
+  const confirmationTriggerPct = momentumTriggerPct;
+  const momentumNote =
+    vd?.tradingPlan?.momentumNote ||
+    (sm?.recentSignals?.[0] as any)?.momentumNote ||
     vd?.tradingPlan?.confirmationNote ||
     (sm?.recentSignals?.[0] as any)?.confirmationNote ||
-    "Pantau lonjakan volume jika harga menembus level ini untuk memvalidasi momentum kelanjutan tren.";
+    "Pantau akselerasi momentum dan lonjakan volume jika harga menembus level momentum entry ini.";
+  const confirmationNote = momentumNote;
+
+  // Harmonized Plan for TradingPlanSpotlight
+  const enrichedPlan = vd?.tradingPlan
+    ? {
+        ...vd.tradingPlan,
+        momentumEntryPrice,
+        momentumTriggerPct,
+        momentumNote,
+        confirmationPrice: momentumEntryPrice,
+        confirmationTriggerPct: momentumTriggerPct,
+        confirmationNote: momentumNote,
+        isMajorBreakout,
+        majorBreakoutLevel,
+        isBreakout: isMajorBreakout
+      }
+    : null;
 
   // 🌊 Indikator VWAP (Volume Weighted Average Price)
   const vwapVal = mi?.vwapAnalysis?.vwap || ps?.vwap || curPrice;
@@ -413,9 +452,9 @@ export default function TickerDetailPage() {
             {activeTab === "overview" && (
               <div className="space-y-5 animate-in fade-in-50 duration-200">
                 {/* 🎯 PROMINENT TRADING PLAN SPOTLIGHT */}
-                {vd?.tradingPlan && (
+                {enrichedPlan && (
                   <TradingPlanSpotlight
-                    plan={vd.tradingPlan}
+                    plan={enrichedPlan}
                     currentPrice={ps?.currentPrice}
                     onViewChart={() => setActiveTab("chart")}
                   />
@@ -529,42 +568,47 @@ export default function TickerDetailPage() {
                           <Activity className="w-4 h-4 text-indigo-600" />
                           Ringkasan Eksekutif & Narasi Pasar
                         </span>
-                        {confirmationPrice > 0 && (
+                        {momentumEntryPrice > 0 && (
                           <Badge
                             variant="outline"
                             className={`text-xs font-mono font-bold flex items-center gap-1.5 ${
-                              isConfirmedBreakout
+                              isMajorBreakout
                                 ? "border-emerald-300 bg-emerald-50 text-emerald-800"
-                                : "border-amber-300 bg-amber-50 text-amber-800"
+                                : "border-indigo-300 bg-indigo-50 text-indigo-800"
                             }`}
                           >
                             <Target className="w-3.5 h-3.5" />
-                            <span>Trigger Breakout: Rp {confirmationPrice.toLocaleString("id-ID")}</span>
+                            <span>Momentum Entry: Rp {momentumEntryPrice.toLocaleString("id-ID")}</span>
                             <span className="opacity-80">
-                              ({confirmationTriggerPct >= 0 ? `+${confirmationTriggerPct}%` : `${confirmationTriggerPct}%`})
+                              ({momentumTriggerPct >= 0 ? `+${momentumTriggerPct}%` : `${momentumTriggerPct}%`})
                             </span>
                           </Badge>
                         )}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="p-4 sm:p-5">
-                      {/* Highlight Konfirmasi Breakout di Ringkasan Eksekutif */}
-                      {confirmationPrice > 0 && (
+                      {/* Highlight Momentum Entry & Major Breakout di Ringkasan Eksekutif */}
+                      {momentumEntryPrice > 0 && (
                         <div className="mb-4 p-3.5 rounded-xl bg-gradient-to-r from-amber-50 via-orange-50/40 to-amber-50 border border-amber-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs">
                           <div className="flex items-center gap-2.5 flex-wrap">
                             <span className="px-2.5 py-1 rounded-md bg-amber-500 text-white font-extrabold text-[11px] tracking-wide flex items-center gap-1 shadow-xs">
                               <Target className="w-3 h-3" />
-                              KONFIRMASI BREAKOUT
+                              MOMENTUM ENTRY
                             </span>
                             <span className="font-mono font-black text-amber-950 text-base">
-                              Rp {confirmationPrice.toLocaleString("id-ID")}
+                              Rp {momentumEntryPrice.toLocaleString("id-ID")}
                             </span>
                             <span className="font-bold text-amber-800 bg-amber-200/70 border border-amber-300/80 px-2 py-0.5 rounded-md text-[11px]">
-                              {confirmationTriggerPct >= 0 ? `+${confirmationTriggerPct}%` : `${confirmationTriggerPct}%`} dari penutupan
+                              {momentumTriggerPct >= 0 ? `+${momentumTriggerPct}%` : `${momentumTriggerPct}%`} dari penutupan
                             </span>
-                            {isConfirmedBreakout ? (
+                            {isMajorBreakout ? (
+                              <span className="font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-md text-[11px] flex items-center gap-1">
+                                <Zap className="w-3 h-3 fill-emerald-600" />
+                                Major Breakout Terkonfirmasi!
+                              </span>
+                            ) : curPrice >= momentumEntryPrice ? (
                               <span className="font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-md text-[11px]">
-                                ✓ Telah Terkonfirmasi
+                                ✓ Level Momentum Terlewati
                               </span>
                             ) : (
                               <span className="font-medium text-slate-600 bg-white/70 border border-slate-200 px-2 py-0.5 rounded-md text-[11px]">
@@ -741,18 +785,28 @@ export default function TickerDetailPage() {
                                     Rp {entryVal.toLocaleString("id-ID")}
                                   </TableCell>
 
-                                  {/* KONFIRMASI BREAKOUT */}
+                                  {/* KONFIRMASI BREAKOUT / MOMENTUM ENTRY */}
                                   <TableCell className="text-right py-2.5 px-3">
-                                    {sig.confirmationPrice || sig.breakoutPrice ? (
-                                      <div className="inline-flex flex-col items-end">
+                                    {sig.momentumEntryPrice || sig.confirmationPrice || sig.breakoutPrice ? (
+                                      <div className="inline-flex flex-col items-end gap-0.5">
                                         <span className="font-mono font-bold text-amber-600 text-[11px]">
-                                          Rp {Number(sig.confirmationPrice || sig.breakoutPrice).toLocaleString("id-ID")}
+                                          Rp {Number(sig.momentumEntryPrice || sig.confirmationPrice || sig.breakoutPrice).toLocaleString("id-ID")}
                                         </span>
-                                        {sig.confirmationTriggerPct ? (
-                                          <span className="text-[9px] text-amber-700 font-bold bg-amber-50 border border-amber-200 px-1 rounded">
-                                            +{sig.confirmationTriggerPct}%
-                                          </span>
-                                        ) : null}
+                                        <div className="flex items-center gap-1">
+                                          {(sig.isMajorBreakout || sig.isBreakoutConfirmed) && (
+                                            <span
+                                              className="text-[8px] font-black text-emerald-700 bg-emerald-100 border border-emerald-300 px-1 py-0.2 rounded leading-tight"
+                                              title={sig.majorBreakoutNote || "Major Breakout historis terkonfirmasi valid"}
+                                            >
+                                              🚀 Major
+                                            </span>
+                                          )}
+                                          {(sig.momentumTriggerPct || sig.confirmationTriggerPct) ? (
+                                            <span className="text-[9px] text-amber-700 font-bold bg-amber-50 border border-amber-200 px-1 rounded leading-tight">
+                                              +{sig.momentumTriggerPct || sig.confirmationTriggerPct}%
+                                            </span>
+                                          ) : null}
+                                        </div>
                                       </div>
                                     ) : (
                                       <span className="text-slate-300 font-mono text-[11px]">-</span>
@@ -941,8 +995,8 @@ export default function TickerDetailPage() {
                                 <div>
                                   <span className="block text-[9px] text-slate-400 font-sans">Konfirmasi</span>
                                   <span className="font-bold text-amber-600 font-mono">
-                                    {sig.confirmationPrice || sig.breakoutPrice
-                                      ? `Rp ${(sig.confirmationPrice || sig.breakoutPrice).toLocaleString("id-ID")}`
+                                    {sig.momentumEntryPrice || sig.confirmationPrice || sig.breakoutPrice
+                                      ? `Rp ${(sig.momentumEntryPrice || sig.confirmationPrice || sig.breakoutPrice).toLocaleString("id-ID")}`
                                       : "-"}
                                   </span>
                                 </div>
@@ -1228,10 +1282,10 @@ export default function TickerDetailPage() {
                           </div>
                         </div>
 
-                        {/* 2. Konfirmasi Breakout Matrix Card */}
+                        {/* 2. Momentum Entry Matrix Card */}
                         <div
                           className={`p-3.5 rounded-xl border transition-all ${
-                            isConfirmedBreakout
+                            isMajorBreakout
                               ? "border-emerald-300 bg-emerald-50/60"
                               : "border-indigo-200 bg-indigo-50/40"
                           }`}
@@ -1239,30 +1293,34 @@ export default function TickerDetailPage() {
                           <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase mb-0.5">
                             <span className="flex items-center gap-1">
                               <Target className="w-3 h-3 text-indigo-500" />
-                              Konfirmasi
+                              Momentum Entry
                             </span>
                             <span
                               className={`px-1.5 py-0.2 rounded text-[9px] font-bold border ${
-                                isConfirmedBreakout
+                                isMajorBreakout
                                   ? "bg-emerald-100 border-emerald-300 text-emerald-700"
+                                  : isConfirmedBreakout
+                                  ? "bg-blue-100 border-blue-300 text-blue-700"
                                   : "bg-indigo-100 border-indigo-200 text-indigo-700"
                               }`}
                             >
-                              {isConfirmedBreakout ? "Confirmed" : "Trigger"}
+                              {isMajorBreakout ? "Breakout 🚀" : isConfirmedBreakout ? "Triggered" : "Trigger"}
                             </span>
                           </div>
                           <div
                             className={`text-xl font-black font-mono mt-0.5 ${
-                              isConfirmedBreakout ? "text-emerald-700" : "text-indigo-950"
+                              isMajorBreakout ? "text-emerald-700" : "text-indigo-950"
                             }`}
                           >
-                            {fmtPrice(confirmationPrice)}
+                            {fmtPrice(momentumEntryPrice)}
                           </div>
                           <div className="text-[11px] text-slate-600 mt-1 font-medium">
-                            {isConfirmedBreakout ? (
-                              <span className="text-emerald-700 font-bold">✓ Terkonfirmasi</span>
+                            {isMajorBreakout ? (
+                              <span className="text-emerald-700 font-bold">✓ Major Breakout</span>
+                            ) : isConfirmedBreakout ? (
+                              <span className="text-blue-700 font-bold">✓ Momentum Lewat</span>
                             ) : (
-                              <span>Jarak: <b className="text-indigo-700 font-bold">+{confirmationTriggerPct}%</b></span>
+                              <span>Jarak: <b className="text-indigo-700 font-bold">+{momentumTriggerPct}%</b></span>
                             )}
                           </div>
                         </div>

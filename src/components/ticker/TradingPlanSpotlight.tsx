@@ -17,9 +17,17 @@ interface TradingPlanData {
   stopLoss: number;
   stopLossPercent: number;
   riskRewardRatio: number;
+  momentumEntryPrice?: number;
+  momentumTriggerPct?: number;
+  momentumNote?: string;
   confirmationPrice?: number;
   confirmationTriggerPct?: number;
   confirmationNote?: string;
+  isMajorBreakout?: boolean;
+  isBreakout?: boolean;
+  majorBreakoutLevel?: number;
+  majorBreakoutType?: string;
+  majorBreakoutNote?: string;
 }
 
 interface TradingPlanSpotlightProps {
@@ -40,6 +48,11 @@ export default function TradingPlanSpotlight({
   const isInsideEntry = cur >= plan.entryArea.min && cur <= plan.entryArea.max;
   const isAboveEntry = cur > plan.entryArea.max;
   const isBelowEntry = cur > 0 && cur < plan.entryArea.min;
+
+  const triggerPrice = plan.momentumEntryPrice || plan.confirmationPrice;
+  const triggerPct = plan.momentumTriggerPct !== undefined ? plan.momentumTriggerPct : plan.confirmationTriggerPct;
+  const triggerNote = plan.momentumNote || plan.confirmationNote;
+  const isBreakout = Boolean(plan.isMajorBreakout || plan.isBreakout || (plan.majorBreakoutLevel && cur >= plan.majorBreakoutLevel));
 
   // Calculate visual progress percentage on range [stopLoss, targetPrice2]
   const totalRange = Math.max(1, plan.targetPrice2 - plan.stopLoss);
@@ -102,34 +115,38 @@ export default function TradingPlanSpotlight({
         </div>
       </div>
 
-      {/* Confirmation Breakout Banner */}
-      {plan.confirmationPrice && (
+      {/* Momentum Entry & Major Breakout Banner */}
+      {triggerPrice && (
         <div className="relative z-10 mt-4 p-3.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-orange-500/15 to-amber-500/20 border border-amber-400/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs backdrop-blur-sm shadow-inner">
           <div className="flex items-center gap-2.5 flex-wrap">
             <span className="px-2.5 py-1 rounded-lg bg-amber-500/30 text-amber-200 font-black text-xs border border-amber-400/50 flex items-center gap-1.5 shadow-xs">
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              🎯 Konfirmasi Breakout / Trigger Entry
+              🎯 Momentum Entry
             </span>
             <span className="font-mono font-black text-amber-300 text-lg tracking-tight">
-              {fmtPrice(plan.confirmationPrice)}
+              {fmtPrice(triggerPrice)}
             </span>
-            {plan.confirmationTriggerPct !== undefined ? (
+            {triggerPct !== undefined ? (
               <span className="text-xs font-black text-amber-200 bg-amber-400/25 border border-amber-400/40 px-2 py-0.5 rounded-md">
-                {plan.confirmationTriggerPct >= 0 ? `+${plan.confirmationTriggerPct}%` : `${plan.confirmationTriggerPct}%`}
+                {triggerPct >= 0 ? `+${triggerPct}%` : `${triggerPct}%`}
               </span>
             ) : null}
-            {cur >= plan.confirmationPrice ? (
+            {isBreakout ? (
               <span className="text-[11px] font-extrabold text-emerald-300 bg-emerald-500/25 border border-emerald-400/40 px-2 py-0.5 rounded-md flex items-center gap-1">
-                ✓ Level Terlewati (Breakout Terkonfirmasi)
+                🚀 Major Breakout Terkonfirmasi {plan.majorBreakoutLevel ? `(${fmtPrice(plan.majorBreakoutLevel)})` : ''}
+              </span>
+            ) : cur >= triggerPrice ? (
+              <span className="text-[11px] font-extrabold text-emerald-300 bg-emerald-500/25 border border-emerald-400/40 px-2 py-0.5 rounded-md flex items-center gap-1">
+                ✓ Momentum Terlewati
               </span>
             ) : (
               <span className="text-[11px] font-bold text-amber-200/90 bg-black/25 border border-amber-400/30 px-2 py-0.5 rounded-md">
-                Menunggu Penembusan
+                Menunggu Akselerasi
               </span>
             )}
           </div>
           <span className="text-slate-200 text-xs font-medium">
-            {plan.confirmationNote || "Pantau lonjakan volume jika level ini ditembus menuju ARA!"}
+            {plan.majorBreakoutNote || triggerNote || "Pantau akselerasi volume saat level momentum entry ini ditembus!"}
           </span>
         </div>
       )}

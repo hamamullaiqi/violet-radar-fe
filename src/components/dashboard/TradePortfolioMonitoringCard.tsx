@@ -496,18 +496,21 @@ export default function TradePortfolioMonitoringCard() {
         {/* Durasi Holding & Status Resisten Breakout */}
         <div className="flex items-center justify-between text-[11px] text-slate-600">
           <span>Hari ke-{trade.holdingDays} ({maxDaysLabel})</span>
-          {trade.isBreakoutConfirmed ? (
-            <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-700 bg-emerald-100/90 px-2 py-0.5 rounded-full border border-emerald-300 animate-pulse">
+          {(trade.isMajorBreakout || trade.isBreakoutConfirmed) ? (
+            <span
+              className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-700 bg-emerald-100/90 px-2 py-0.5 rounded-full border border-emerald-300 animate-pulse"
+              title={trade.majorBreakoutNote || "Major Breakout historis terkonfirmasi valid"}
+            >
               <Zap className="w-3 h-3 text-emerald-600 fill-emerald-600" />
-              Breakout Terkonfirmasi!
+              Major Breakout! 🚀
             </span>
-          ) : trade.confirmationPrice ? (
+          ) : (trade.momentumEntryPrice || trade.confirmationPrice) ? (
             <span
               className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200"
-              title={trade.confirmationNote || "Pantau penembusan level resisten"}
+              title={trade.momentumNote || trade.confirmationNote || "Pantau penembusan level momentum entry"}
             >
               <Target className="w-3 h-3 text-indigo-500" />
-              Breakout: Rp {trade.confirmationPrice?.toLocaleString("id-ID")} ({trade.confirmationTriggerPct > 0 ? "+" : ""}{trade.confirmationTriggerPct}%)
+              Momentum Entry: Rp {(trade.momentumEntryPrice || trade.confirmationPrice)?.toLocaleString("id-ID")} ({((trade.momentumTriggerPct ?? trade.confirmationTriggerPct) ?? 0) > 0 ? "+" : ""}{trade.momentumTriggerPct ?? trade.confirmationTriggerPct}%)
             </span>
           ) : (
             <span className="text-rose-600 font-semibold">SL: Rp {trade.stopLossPrice?.toLocaleString("id-ID")}</span>
@@ -1608,14 +1611,14 @@ export default function TradePortfolioMonitoringCard() {
                             </TableCell>
                             <TableCell className="text-center">
                               <div className="flex flex-col items-center gap-1">
-                                {trade.isBreakoutConfirmed && (
-                                  <span className="inline-flex items-center gap-1 text-[9px] font-black text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full border border-emerald-300 animate-pulse">
-                                    <Zap className="w-2.5 h-2.5 fill-emerald-600" /> Breakout Terkonfirmasi!
+                                {(trade.isMajorBreakout || trade.isBreakoutConfirmed) && (
+                                  <span className="inline-flex items-center gap-1 text-[9px] font-black text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full border border-emerald-300 animate-pulse" title={trade.majorBreakoutNote || "Major Breakout Terkonfirmasi"}>
+                                    <Zap className="w-2.5 h-2.5 fill-emerald-600" /> Major Breakout 🚀
                                   </span>
                                 )}
-                                {!trade.isBreakoutConfirmed && trade.confirmationPrice && (
-                                  <span className="text-[9px] font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200" title={trade.confirmationNote || ""}>
-                                    Breakout: Rp {trade.confirmationPrice?.toLocaleString("id-ID")}
+                                {!(trade.isMajorBreakout || trade.isBreakoutConfirmed) && (trade.momentumEntryPrice || trade.confirmationPrice) && (
+                                  <span className="text-[9px] font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200" title={trade.momentumNote || trade.confirmationNote || ""}>
+                                    Momentum: Rp {(trade.momentumEntryPrice || trade.confirmationPrice)?.toLocaleString("id-ID")}
                                   </span>
                                 )}
                                 {trade.actionRecommendation === "CUT" ? (
@@ -2893,21 +2896,21 @@ export default function TradePortfolioMonitoringCard() {
                     Rp {account.currentCash?.toLocaleString("id-ID")}
                   </span>
                 </div>
-                {selectedTradeForAddLots.isBreakoutConfirmed && (
+                {(selectedTradeForAddLots.isMajorBreakout || selectedTradeForAddLots.isBreakoutConfirmed) && (
                   <div className="flex justify-between items-center bg-emerald-50 px-2.5 py-1.5 rounded-md border border-emerald-200">
                     <span className="text-emerald-800 font-bold flex items-center gap-1">
-                      <Zap className="w-3.5 h-3.5 text-emerald-600 fill-emerald-600" /> Konfirmasi Breakout:
+                      <Zap className="w-3.5 h-3.5 text-emerald-600 fill-emerald-600" /> Major Breakout:
                     </span>
                     <span className="font-black text-emerald-700">Terkonfirmasi Valid 🚀</span>
                   </div>
                 )}
-                {!selectedTradeForAddLots.isBreakoutConfirmed && selectedTradeForAddLots.confirmationPrice && (
+                {!(selectedTradeForAddLots.isMajorBreakout || selectedTradeForAddLots.isBreakoutConfirmed) && (selectedTradeForAddLots.momentumEntryPrice || selectedTradeForAddLots.confirmationPrice) && (
                   <div className="flex justify-between items-center bg-indigo-50 px-2.5 py-1.5 rounded-md border border-indigo-200">
                     <span className="text-indigo-800 font-semibold flex items-center gap-1">
-                      <Target className="w-3.5 h-3.5 text-indigo-600" /> Level Breakout:
+                      <Target className="w-3.5 h-3.5 text-indigo-600" /> Momentum Entry:
                     </span>
                     <span className="font-bold text-indigo-700">
-                      Rp {selectedTradeForAddLots.confirmationPrice?.toLocaleString("id-ID")} ({selectedTradeForAddLots.confirmationTriggerPct > 0 ? "+" : ""}{selectedTradeForAddLots.confirmationTriggerPct}%)
+                      Rp {(selectedTradeForAddLots.momentumEntryPrice || selectedTradeForAddLots.confirmationPrice)?.toLocaleString("id-ID")} ({((selectedTradeForAddLots.momentumTriggerPct ?? selectedTradeForAddLots.confirmationTriggerPct) ?? 0) > 0 ? "+" : ""}{selectedTradeForAddLots.momentumTriggerPct ?? selectedTradeForAddLots.confirmationTriggerPct}%)
                     </span>
                   </div>
                 )}

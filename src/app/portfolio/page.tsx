@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -8,6 +8,8 @@ import {
   Wallet,
   LogOut,
   User as UserIcon,
+  Users,
+  KeyRound,
   Shield,
   Search
 } from "lucide-react";
@@ -24,10 +26,12 @@ import {
 } from "@/components/ui/dialog";
 import TradePortfolioMonitoringCard from "@/components/dashboard/TradePortfolioMonitoringCard";
 import SearchTickers from "@/components/SearchTickers";
+import ChangePasswordModal from "@/components/ChangePasswordModal";
 
 export default function PortfolioPage() {
   const router = useRouter();
   const { user, logout, loading: authLoading } = useAuth();
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   if (authLoading) {
     return (
@@ -122,13 +126,35 @@ export default function PortfolioPage() {
                     </span>
                   </div>
                 </div>
-                <DialogFooter className="w-full">
-                  <Button onClick={logout} variant="outline" className="w-full border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 font-semibold text-xs h-9">
+                <DialogFooter className="w-full flex-col gap-2 pt-2 sm:flex-col sm:space-x-0">
+                  <Button
+                    type="button"
+                    onClick={() => setChangePasswordOpen(true)}
+                    variant="outline"
+                    className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-semibold text-xs h-9 cursor-pointer"
+                  >
+                    <KeyRound className="h-4 w-4 mr-1.5 text-indigo-600" /> Ganti Kata Sandi
+                  </Button>
+                  {user.role === "ADMIN" && (
+                    <Button
+                      onClick={() => router.push("/users")}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs h-9 cursor-pointer"
+                    >
+                      <Users className="h-4 w-4 mr-1.5" /> Buka Manajemen Pengguna
+                    </Button>
+                  )}
+                  <Button onClick={logout} variant="outline" className="w-full border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 font-semibold text-xs h-9 cursor-pointer">
                     <LogOut className="h-4 w-4 mr-1.5" /> Keluar dari Akun
                   </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
+            {/* Change Password Modal */}
+            <ChangePasswordModal
+              open={changePasswordOpen}
+              onOpenChange={setChangePasswordOpen}
+            />
           </div>
         </div>
       </nav>

@@ -17,12 +17,14 @@ import {
   LogOut,
   User as UserIcon,
   Users,
+  KeyRound,
   SlidersHorizontal,
   ChevronRight,
   BarChart3,
   Radar,
   Wallet,
 } from "lucide-react";
+import ChangePasswordModal from "@/components/ChangePasswordModal";
 import {
   Card,
   CardContent,
@@ -371,6 +373,7 @@ export default function Dashboard() {
   const [marketRegime, setMarketRegime] = useState({ regime: "BULLISH", score: 20 });
   const [runningJob, setRunningJob] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   // Strategy Configurations
   const [selectedStrategyId, setSelectedStrategyId] = useState("SWING_DEFAULT");
@@ -643,6 +646,14 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <DialogFooter className="w-full flex-col gap-2 pt-2 sm:flex-col sm:space-x-0">
+                  <Button
+                    type="button"
+                    onClick={() => setChangePasswordOpen(true)}
+                    variant="outline"
+                    className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-semibold text-xs h-9 cursor-pointer"
+                  >
+                    <KeyRound className="h-4 w-4 mr-1.5 text-indigo-600" /> Ganti Kata Sandi
+                  </Button>
                   {user.role === "ADMIN" && (
                     <Button
                       onClick={() => router.push("/users")}
@@ -657,6 +668,12 @@ export default function Dashboard() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
+            {/* Change Password Modal */}
+            <ChangePasswordModal
+              open={changePasswordOpen}
+              onOpenChange={setChangePasswordOpen}
+            />
           </div>
 
           <Button

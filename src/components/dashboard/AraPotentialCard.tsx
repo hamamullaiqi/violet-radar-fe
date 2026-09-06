@@ -519,18 +519,28 @@ export default function AraPotentialCard() {
                           </div>
                         </TableCell>
 
-                        {/* KONFIRMASI BREAKOUT */}
+                        {/* KONFIRMASI BREAKOUT / MOMENTUM ENTRY */}
                         <TableCell className="text-right py-2.5 px-3">
-                          {sig.confirmationPrice || sig.breakoutPrice ? (
-                            <div className="inline-flex flex-col items-end">
+                          {sig.momentumEntryPrice || sig.confirmationPrice || sig.breakoutPrice ? (
+                            <div className="inline-flex flex-col items-end gap-0.5">
                               <span className="font-mono font-bold text-amber-600 text-[11px]">
-                                Rp {Number(sig.confirmationPrice || sig.breakoutPrice).toLocaleString("id-ID")}
+                                Rp {Number(sig.momentumEntryPrice || sig.confirmationPrice || sig.breakoutPrice).toLocaleString("id-ID")}
                               </span>
-                              {sig.confirmationTriggerPct ? (
-                                <span className="text-[9px] text-amber-700 font-bold bg-amber-50 border border-amber-200 px-1 rounded">
-                                  +{sig.confirmationTriggerPct}%
-                                </span>
-                              ) : null}
+                              <div className="flex items-center gap-1">
+                                {(sig.isMajorBreakout || sig.isBreakoutConfirmed) && (
+                                  <span
+                                    className="text-[8px] font-black text-emerald-700 bg-emerald-100 border border-emerald-300 px-1 py-0.2 rounded leading-tight"
+                                    title={sig.majorBreakoutNote || "Major Breakout historis terkonfirmasi valid"}
+                                  >
+                                    🚀 Major
+                                  </span>
+                                )}
+                                {(sig.momentumTriggerPct || sig.confirmationTriggerPct) ? (
+                                  <span className="text-[9px] text-amber-700 font-bold bg-amber-50 border border-amber-200 px-1 rounded leading-tight">
+                                    +{sig.momentumTriggerPct || sig.confirmationTriggerPct}%
+                                  </span>
+                                ) : null}
+                              </div>
                             </div>
                           ) : (
                             <span className="text-slate-300 font-mono text-[11px]">-</span>
@@ -779,9 +789,9 @@ export default function AraPotentialCard() {
                         <div className="font-bold text-slate-700 font-mono">
                           {sig.score ? Number(sig.score).toFixed(0) : 80}
                         </div>
-                        {sig.confirmationPrice ? (
+                        {(sig.momentumEntryPrice || sig.confirmationPrice) ? (
                           <span className="text-[9px] text-amber-700 font-bold">
-                            Break: Rp {Number(sig.confirmationPrice).toLocaleString("id-ID")}
+                            {(sig.isMajorBreakout || sig.isBreakoutConfirmed) ? "🚀 " : ""}Momentum: Rp {Number(sig.momentumEntryPrice || sig.confirmationPrice).toLocaleString("id-ID")}
                           </span>
                         ) : null}
                       </div>
