@@ -74,12 +74,12 @@ export default function TradePortfolioMonitoringCard() {
   // Dialog States
   const [topupOpen, setTopupOpen] = useState(false);
   const [cashActionType, setCashActionType] = useState<"DEPOSIT" | "WITHDRAW" | "ADJUST">("DEPOSIT");
-  const [topupAmount, setTopupAmount] = useState<number>(5000000);
+  const [topupAmount, setTopupAmount] = useState<number>(0);
   const [targetCashInput, setTargetCashInput] = useState<number>(0);
   const [topupNote, setTopupNote] = useState<string>("Setor / Top-up Kas RDN");
 
   const [capitalOpen, setCapitalOpen] = useState(false);
-  const [capitalInput, setCapitalInput] = useState<number>(20000000);
+  const [capitalInput, setCapitalInput] = useState<number>(0);
 
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
   const [manualForm, setManualForm] = useState({
@@ -463,12 +463,12 @@ export default function TradePortfolioMonitoringCard() {
     showNotice("success", "File CSV jurnal berhasil diunduh.");
   };
 
-  const account = data?.account || { initialCapital: 20000000, currentCash: 20000000, totalDeposited: 20000000 };
-  const equity = data?.equity || { totalEquity: 20000000, totalInvestedCapital: 0, unrealizedPnLRupiah: 0, unrealizedPnLPercent: 0, netPortfolioGrowthPercent: 0 };
+  const account = data?.account || { initialCapital: 0, currentCash: 0, totalDeposited: 0 };
+  const equity = data?.equity || { totalEquity: 0, totalInvestedCapital: 0, unrealizedPnLRupiah: 0, unrealizedPnLPercent: 0, netPortfolioGrowthPercent: 0 };
   const slots = data?.slots || {
-    swingSlot1: { budget: 7500000, isOccupied: false, trade: null },
-    swingSlot2: { budget: 7500000, isOccupied: false, trade: null },
-    beliSoreSlot: { budget: 5000000, isOccupied: false, trade: null }
+    swingSlot1: { budget: 0, isOccupied: false, trade: null },
+    swingSlot2: { budget: 0, isOccupied: false, trade: null },
+    beliSoreSlot: { budget: 0, isOccupied: false, trade: null }
   };
   const openTrades = data?.openTrades || [];
   const performance = data?.performance || { winRate: 0, totalRealizedPnLRupiah: 0, profitFactor: 0, closedTradesCount: 0 };
