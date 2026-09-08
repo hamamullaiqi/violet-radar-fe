@@ -60,6 +60,7 @@ import OverviewMonthly from "@/components/dashboard/OverviewMonthly";
 import OverViewYearly from "@/components/dashboard/OverViewYearly";
 import OverviewStatistics from "@/components/dashboard/OverviewStatistics";
 import AraPotentialCard from "@/components/dashboard/AraPotentialCard";
+import FractionBreakoutCard from "@/components/dashboard/FractionBreakoutCard";
 import AraTargetsCard from "@/components/dashboard/AraTargetsCard";
 import ArbTargetsCard from "@/components/dashboard/ArbTargetsCard";
 import ForeignAccumulationCard from "@/components/dashboard/ForeignAccumulationCard";
@@ -766,8 +767,11 @@ export default function Dashboard() {
         {activePage === "radars" && (
           <div className="space-y-6 animate-in fade-in-50 duration-150">
 
-            {/* 🎯 HEADLINER: RADAR CALON ARA & BELI SORE (BSJP) */}
-            <AraPotentialCard />
+            {/* 🎯 HEADLINERS: RADAR CALON ARA & RADAR CALON LEDAKAN 20% (PRE-BREAKOUT FRAKSI) */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+              <AraPotentialCard />
+              <FractionBreakoutCard />
+            </div>
 
             {/* ROW 1: SMART MARKET MOVERS - ARA VS ARB */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
