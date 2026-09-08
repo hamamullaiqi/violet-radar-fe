@@ -31,7 +31,7 @@ import { formatRupiah } from "@/lib/utils";
 export default function AraPotentialCard() {
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [dateMode, setDateMode] = useState<"DATE" | "ALL">("DATE");
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [statusFilter, setStatusFilter] = useState<string>("ACTIVE");
   const [page, setPage] = useState<number>(1);
   const limit = dateMode === "ALL" ? 15 : 50;
 
@@ -100,8 +100,13 @@ export default function AraPotentialCard() {
     }
   }, [latestTradingDate, selectedDate]);
 
-  // All signals are Beli Sore candidates
-  const displayedSignals = rawSignals;
+  // All signals are Beli Sore candidates; strictly eliminate expired or closed signals when in ACTIVE mode
+  const displayedSignals = useMemo(() => {
+    if (statusFilter === "ACTIVE") {
+      return rawSignals.filter((sig: any) => sig.status === "ACTIVE" || sig.status === "PENDING");
+    }
+    return rawSignals;
+  }, [rawSignals, statusFilter]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -202,12 +207,17 @@ export default function AraPotentialCard() {
 
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
                 <Clock className="w-3 h-3 text-slate-400" />
-                Pre-Closing: 15:30 – 15:50 WIB
+                Pre-Closing: 15:40 – 15:50 WIB
+              </span>
+
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <Zap className="w-3 h-3 text-emerald-500 fill-emerald-500" />
+                Range: Rp 90 – Rp 2.500
               </span>
             </div>
 
             <CardDescription className="text-xs text-slate-500 leading-normal">
-              Sinyal resmi strategi <b>Radar Calon ARA & Beli Sore</b> dengan kuota maksimal 5 saham pilihan terbaik per hari (15:30 – 15:50 WIB).
+              Sinyal resmi strategi <b>Radar Calon ARA & Beli Sore</b> fokus 1 saham juara pilihan terbaik (Rentang Harga: <b>Rp 90 – Rp 2.500</b>, Anti-Kehabisan Bensin).
             </CardDescription>
           </div>
 
@@ -233,10 +243,10 @@ export default function AraPotentialCard() {
                 </DialogHeader>
                 <div className="text-xs text-slate-600 space-y-3 pt-2 leading-relaxed">
                   <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-900 font-medium">
-                    🎯 <b>Kuota Disiplin (Maksimal 5 Beli Sore per hari):</b>
+                    🎯 <b>Kuota Disiplin (Hanya 1 Beli Sore Terbaik per hari):</b>
                     <ul className="list-disc pl-4 mt-1 space-y-1 text-[11px]">
-                      <li><b>5 Beli Sore (Calon ARA)</b>: Saham prioritas tertinggi dengan skor akumulasi & kekuatan penutupan terkuat, siap dieksekusi pada sesi <i>pre-closing</i> (15:30 – 15:50 WIB).</li>
-                      <li><b>Tanpa Watchlist Terpisah</b>: Semua rekomendasi difokuskan langsung pada Top 5 saham berpeluang tinggi menuju ARA atau gap up esok pagi.</li>
+                      <li><b>1 Beli Sore Terbaik (Calon ARA)</b>: Saham prioritas tertinggi dengan skor akumulasi & kekuatan penutupan terkuat, siap dieksekusi pada sesi <i>pre-closing</i> (15:40 – 15:50 WIB).</li>
+                      <li><b>Fokus Penuh</b>: Seluruh alokasi Beli Sore difokuskan langsung pada 1 saham terbaik berpeluang paling tinggi menuju ARA atau gap up esok pagi.</li>
                     </ul>
                   </div>
                   <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 space-y-1">
@@ -326,9 +336,9 @@ export default function AraPotentialCard() {
           {/* Quota Indicators for Current Selected Day */}
           {dateMode === "DATE" && (
             <div className="flex items-center gap-2 flex-wrap text-[11px]">
-              <span className="font-semibold text-slate-500">Hasil Kuota:</span>
+              <span className="font-semibold text-slate-500">Kuota Aktif:</span>
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md font-extrabold bg-rose-100 text-rose-800 border border-rose-200">
-                🔥 Beli Sore: {displayedSignals.length}/5
+                🔥 Beli Sore: {displayedSignals.length}/1
               </span>
             </div>
           )}
@@ -339,10 +349,10 @@ export default function AraPotentialCard() {
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-extrabold text-[11px] bg-rose-50 text-rose-700 border border-rose-200">
               <Flame className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
-              Top 5 Beli Sore ({displayedSignals.length} emiten)
+              Top 1 Beli Sore ({displayedSignals.length} emiten {statusFilter === "ACTIVE" ? "aktif" : ""})
             </span>
             <span className="text-[11px] text-slate-400 hidden sm:inline">
-              Fokus kandidat terbaik pre-closing 15:30 WIB
+              Fokus kandidat terbaik pre-closing 15:40 WIB (Rp 90 – Rp 2.500)
             </span>
           </div>
 
@@ -356,10 +366,10 @@ export default function AraPotentialCard() {
                 setStatusFilter(e.target.value);
                 setPage(1);
               }}
-              className="px-2 py-1 rounded-lg border border-slate-200 bg-white text-xs text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="px-2 py-1 rounded-lg border border-slate-200 bg-white text-xs text-slate-800 font-bold focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-2xs"
             >
-              <option value="ALL">Semua Status</option>
-              <option value="ACTIVE">ACTIVE (Berjalan)</option>
+              <option value="ACTIVE">Hanya Sinyal Aktif (Default)</option>
+              <option value="ALL">Semua Riwayat (Termasuk Selesai)</option>
               <option value="HIT_TP1">HIT TP1</option>
               <option value="HIT_TP2">HIT TP2</option>
               <option value="HIT_SL">HIT SL / TRAILING</option>
@@ -386,9 +396,9 @@ export default function AraPotentialCard() {
           </div>
         ) : displayedSignals.length === 0 ? (
           <div className="p-8 text-center text-xs text-slate-500 space-y-1">
-            <p className="font-bold text-slate-700">Tidak ada sinyal yang cocok dengan tanggal & setup saat ini.</p>
+            <p className="font-bold text-slate-700">Tidak ada sinyal aktif yang berjalan pada tanggal ini.</p>
             <p className="text-slate-400">
-              Pilih tanggal lain pada kalender (misal <b>2026-09-02</b>) atau klik tombol <b>"Semua Tanggal"</b>.
+              Sinyal yang sudah expired atau close otomatis dihilangkan agar fokus pada eksekusi. Untuk melihat riwayat lampau, ubah filter Status ke <b>"Semua Riwayat"</b> atau klik <b>"Semua Tanggal"</b>.
             </p>
           </div>
         ) : (
@@ -404,11 +414,15 @@ export default function AraPotentialCard() {
                     <TableHead className="text-right py-2.5 px-3">Entry / Sisa ARA</TableHead>
                     <TableHead className="text-center py-2.5 px-3">Kekuatan CLV</TableHead>
                     <TableHead className="text-right py-2.5 px-3">Konfirmasi Breakout</TableHead>
-                    <TableHead className="text-right py-2.5 px-3">Target TP1</TableHead>
-                    <TableHead className="text-right py-2.5 px-3">Target TP2</TableHead>
-                    <TableHead className="text-right py-2.5 px-3">Stop Loss</TableHead>
-                    <TableHead className="text-right py-2.5 px-3">Peak Price</TableHead>
-                    <TableHead className="text-right py-2.5 px-3">Close Price</TableHead>
+                    <TableHead className="text-right py-2.5 px-3">Target TP1 (+3.5%)</TableHead>
+                    <TableHead className="text-right py-2.5 px-3">Target TP2 (+7.0%)</TableHead>
+                    <TableHead className="text-right py-2.5 px-3">Stop Loss Proteksi</TableHead>
+                    {statusFilter !== "ACTIVE" && (
+                      <>
+                        <TableHead className="text-right py-2.5 px-3">Peak Price</TableHead>
+                        <TableHead className="text-right py-2.5 px-3">Close / Exit</TableHead>
+                      </>
+                    )}
                     <TableHead className="text-center py-2.5 px-3">Score</TableHead>
                     <TableHead className="text-right py-2.5 px-3">Tanggal / Hold</TableHead>
                   </TableRow>
@@ -608,39 +622,43 @@ export default function AraPotentialCard() {
                           )}
                         </TableCell>
 
-                        {/* PEAK PRICE */}
-                        <TableCell className="text-right font-mono py-2.5 px-3">
-                          {peakVal > 0 ? (
-                            <div className={`inline-flex items-center justify-end gap-1 font-bold ${peakDiff > 0 ? "text-emerald-600" : peakDiff < 0 ? "text-rose-600" : "text-slate-700"}`}>
-                              {peakDiff > 0 ? (
-                                <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600" />
-                              ) : peakDiff < 0 ? (
-                                <ArrowDownRight className="h-3.5 w-3.5 text-rose-600" />
-                              ) : null}
-                              <span>Rp {peakVal.toLocaleString("id-ID")}</span>
-                              <span className="text-[10px] font-semibold">
-                                ({peakDiff >= 0 ? "+" : ""}{peakDiff.toFixed(1)}%)
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="text-slate-400 font-mono text-xs italic">-</div>
-                          )}
-                        </TableCell>
+                        {statusFilter !== "ACTIVE" && (
+                          <>
+                            {/* PEAK PRICE */}
+                            <TableCell className="text-right font-mono py-2.5 px-3">
+                              {peakVal > 0 ? (
+                                <div className={`inline-flex items-center justify-end gap-1 font-bold ${peakDiff > 0 ? "text-emerald-600" : peakDiff < 0 ? "text-rose-600" : "text-slate-700"}`}>
+                                  {peakDiff > 0 ? (
+                                    <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600" />
+                                  ) : peakDiff < 0 ? (
+                                    <ArrowDownRight className="h-3.5 w-3.5 text-rose-600" />
+                                  ) : null}
+                                  <span>Rp {peakVal.toLocaleString("id-ID")}</span>
+                                  <span className="text-[10px] font-semibold">
+                                    ({peakDiff >= 0 ? "+" : ""}{peakDiff.toFixed(1)}%)
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="text-slate-400 font-mono text-xs italic">-</div>
+                              )}
+                            </TableCell>
 
-                        {/* CLOSE PRICE */}
-                        <TableCell className="text-right font-mono py-2.5 px-3">
-                          <div className={`inline-flex items-center justify-end gap-1 font-bold ${closeDiff > 0 ? "text-emerald-600" : closeDiff < 0 ? "text-rose-600" : "text-slate-700"}`}>
-                            {closeDiff > 0 ? (
-                              <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600" />
-                            ) : closeDiff < 0 ? (
-                              <ArrowDownRight className="h-3.5 w-3.5 text-rose-600" />
-                            ) : null}
-                            <span>Rp {closeVal.toLocaleString("id-ID")}</span>
-                            <span className="text-[10px] font-semibold">
-                              ({closeDiff >= 0 ? "+" : ""}{closeDiff.toFixed(1)}%)
-                            </span>
-                          </div>
-                        </TableCell>
+                            {/* CLOSE PRICE */}
+                            <TableCell className="text-right font-mono py-2.5 px-3">
+                              <div className={`inline-flex items-center justify-end gap-1 font-bold ${closeDiff > 0 ? "text-emerald-600" : closeDiff < 0 ? "text-rose-600" : "text-slate-700"}`}>
+                                {closeDiff > 0 ? (
+                                  <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600" />
+                                ) : closeDiff < 0 ? (
+                                  <ArrowDownRight className="h-3.5 w-3.5 text-rose-600" />
+                                ) : null}
+                                <span>Rp {closeVal.toLocaleString("id-ID")}</span>
+                                <span className="text-[10px] font-semibold">
+                                  ({closeDiff >= 0 ? "+" : ""}{closeDiff.toFixed(1)}%)
+                                </span>
+                              </div>
+                            </TableCell>
+                          </>
+                        )}
 
                         {/* SCORE */}
                         <TableCell className="text-center py-2.5 px-3">

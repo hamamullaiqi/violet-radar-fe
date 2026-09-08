@@ -94,6 +94,8 @@ export default function TradePortfolioMonitoringCard() {
   const [newStopLoss, setNewStopLoss] = useState<number>(0);
   const [newTp1, setNewTp1] = useState<number>(0);
   const [newTp2, setNewTp2] = useState<number>(0);
+  const [autoSyncRadarInput, setAutoSyncRadarInput] = useState<boolean>(true);
+  const [syncingTradeId, setSyncingTradeId] = useState<string | null>(null);
 
   const [exitModalOpen, setExitModalOpen] = useState(false);
   const [selectedTradeForExit, setSelectedTradeForExit] = useState<any>(null);
@@ -138,7 +140,7 @@ export default function TradePortfolioMonitoringCard() {
   const fetchOverview = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get("/api/portfolio/overview");
+      const res = await api.get(`/api/portfolio/overview?t=${Date.now()}`);
       if (res.data?.success) {
         setData(res.data.data);
       }
@@ -273,6 +275,79 @@ export default function TradePortfolioMonitoringCard() {
     }
   };
 
+  // Helper: Open Risk Modal with prefilled levels
+  const openRiskModal = (trade: any) => {
+    setSelectedTradeForRisk(trade);
+    setNewStopLoss(trade.stopLossPrice);
+    setNewTp1(trade.targetPrice1 || 0);
+    setNewTp2(trade.targetPrice2 || 0);
+    setAutoSyncRadarInput(trade.autoSyncRadar !== false);
+    setRiskModalOpen(true);
+  };
+
+  // Handler: 1-Click Sync Position with Radar
+  const handleSyncRadar = async (tradeId: string) => {
+    try {
+      setSyncingTradeId(tradeId);
+      const res = await api.post(`/api/portfolio/position/${tradeId}/sync-radar`);
+      if (res.data?.success) {
+        showNotice("success", res.data.message || "Berhasil disinkronkan ke radar!");
+
+        // Optimistic UI state update immediately (instant reflection without page reload)
+        const updatedTrade = res.data?.data;
+        if (updatedTrade) {
+          setData((prevData: any) => {
+            if (!prevData) return prevData;
+            const updateTradeObj = (t: any) => {
+              if (!t) return t;
+              if (String(t._id) === String(tradeId) || String(t.id) === String(tradeId)) {
+                return {
+                  ...t,
+                  stopLossPrice: updatedTrade.stopLossPrice,
+                  targetPrice1: updatedTrade.targetPrice1,
+                  targetPrice2: updatedTrade.targetPrice2,
+                  autoSyncRadar: true,
+                  isManualOverride: false,
+                  radarSyncStatus: t.radarSyncStatus ? {
+                    ...t.radarSyncStatus,
+                    isOutdated: false,
+                    lastSyncedAt: new Date()
+                  } : null
+                };
+              }
+              return t;
+            };
+
+            const newOpenTrades = (prevData.openTrades || []).map(updateTradeObj);
+            const newSlots = { ...prevData.slots };
+            if (newSlots.swingSlot1?.trade) newSlots.swingSlot1.trade = updateTradeObj(newSlots.swingSlot1.trade);
+            if (newSlots.swingSlot2?.trade) newSlots.swingSlot2.trade = updateTradeObj(newSlots.swingSlot2.trade);
+            if (newSlots.beliSoreSlot?.trade) newSlots.beliSoreSlot.trade = updateTradeObj(newSlots.beliSoreSlot.trade);
+            if (newSlots.extraSlots) {
+              newSlots.extraSlots = newSlots.extraSlots.map((es: any) => ({
+                ...es,
+                trade: updateTradeObj(es.trade)
+              }));
+            }
+
+            return {
+              ...prevData,
+              openTrades: newOpenTrades,
+              slots: newSlots
+            };
+          });
+        }
+
+        // Await fresh fetch from server
+        await fetchOverview();
+      }
+    } catch (err: any) {
+      showNotice("error", err?.response?.data?.message || "Gagal menyinkronkan dengan radar.");
+    } finally {
+      setSyncingTradeId(null);
+    }
+  };
+
   // Handler: Update Risk (SL/TP)
   const handleUpdateRisk = async () => {
     if (!selectedTradeForRisk) return;
@@ -280,12 +355,13 @@ export default function TradePortfolioMonitoringCard() {
       const res = await api.patch(`/api/portfolio/position/${selectedTradeForRisk._id}/risk`, {
         stopLossPrice: newStopLoss,
         targetPrice1: newTp1,
-        targetPrice2: newTp2
+        targetPrice2: newTp2,
+        autoSyncRadar: autoSyncRadarInput
       });
       if (res.data?.success) {
         showNotice("success", res.data.message);
         setRiskModalOpen(false);
-        fetchOverview();
+        await fetchOverview();
       }
     } catch (err: any) {
       showNotice("error", err?.response?.data?.message || "Gagal memperbarui level resiko.");
@@ -575,6 +651,30 @@ export default function TradePortfolioMonitoringCard() {
             </div>
           </div>
         </div>
+
+        {/* Banner Sinkronisasi Radar jika ada level baru */}
+        {trade.radarSyncStatus && trade.radarSyncStatus.isOutdated && (
+          <div className="p-2.5 rounded-lg bg-amber-50/90 border border-amber-300 text-[11px] flex items-center justify-between gap-2 shadow-2xs">
+            <div className="flex-1 text-amber-900 leading-tight">
+              <div className="font-bold flex items-center gap-1 text-amber-800">
+                <Zap className="w-3 h-3 text-amber-600 fill-amber-600" />
+                <span>Radar EOD Diperbarui:</span>
+              </div>
+              <div className="text-[10.5px] text-amber-700 font-medium mt-0.5">
+                SL Rp {trade.radarSyncStatus.radarSL.toLocaleString("id-ID")} • TP1 Rp {trade.radarSyncStatus.radarTP1.toLocaleString("id-ID")}
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleSyncRadar(trade._id)}
+              disabled={syncingTradeId === trade._id}
+              className="text-[10px] font-bold h-6 px-2.5 border-amber-400 bg-amber-100 hover:bg-amber-200 text-amber-950 shrink-0 cursor-pointer shadow-2xs"
+            >
+              {syncingTradeId === trade._id ? "Sinkron..." : "⚡ Sinkronkan"}
+            </Button>
+          </div>
+        )}
       </div>
     );
   };
@@ -1093,13 +1193,7 @@ export default function TradePortfolioMonitoringCard() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => {
-                        setSelectedTradeForRisk(slots.swingSlot1.trade);
-                        setNewStopLoss(slots.swingSlot1.trade.stopLossPrice);
-                        setNewTp1(slots.swingSlot1.trade.targetPrice1 || 0);
-                        setNewTp2(slots.swingSlot1.trade.targetPrice2 || 0);
-                        setRiskModalOpen(true);
-                      }}
+                      onClick={() => openRiskModal(slots.swingSlot1.trade)}
                       className="flex-1 text-[11px] h-7 border-slate-200 hover:bg-slate-100 cursor-pointer"
                     >
                       Edit SL/TP
@@ -1207,13 +1301,7 @@ export default function TradePortfolioMonitoringCard() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => {
-                        setSelectedTradeForRisk(slots.swingSlot2.trade);
-                        setNewStopLoss(slots.swingSlot2.trade.stopLossPrice);
-                        setNewTp1(slots.swingSlot2.trade.targetPrice1 || 0);
-                        setNewTp2(slots.swingSlot2.trade.targetPrice2 || 0);
-                        setRiskModalOpen(true);
-                      }}
+                      onClick={() => openRiskModal(slots.swingSlot2.trade)}
                       className="flex-1 text-[11px] h-7 border-slate-200 hover:bg-slate-100 cursor-pointer"
                     >
                       Edit SL/TP
@@ -1321,13 +1409,7 @@ export default function TradePortfolioMonitoringCard() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => {
-                        setSelectedTradeForRisk(slots.beliSoreSlot.trade);
-                        setNewStopLoss(slots.beliSoreSlot.trade.stopLossPrice);
-                        setNewTp1(slots.beliSoreSlot.trade.targetPrice1 || 0);
-                        setNewTp2(slots.beliSoreSlot.trade.targetPrice2 || 0);
-                        setRiskModalOpen(true);
-                      }}
+                      onClick={() => openRiskModal(slots.beliSoreSlot.trade)}
                       className="flex-1 text-[11px] h-7 border-slate-200 hover:bg-slate-100 cursor-pointer"
                     >
                       Edit SL/TP
@@ -1437,13 +1519,7 @@ export default function TradePortfolioMonitoringCard() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => {
-                          setSelectedTradeForRisk(extra.trade);
-                          setNewStopLoss(extra.trade.stopLossPrice);
-                          setNewTp1(extra.trade.targetPrice1 || 0);
-                          setNewTp2(extra.trade.targetPrice2 || 0);
-                          setRiskModalOpen(true);
-                        }}
+                        onClick={() => openRiskModal(extra.trade)}
                         className="flex-1 text-[11px] h-7 border-slate-200 hover:bg-slate-100 cursor-pointer"
                       >
                         Edit SL/TP
@@ -1686,16 +1762,23 @@ export default function TradePortfolioMonitoringCard() {
                                 >
                                   + Muatan
                                 </Button>
+                                {trade.radarSyncStatus?.isOutdated && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleSyncRadar(trade._id)}
+                                    disabled={syncingTradeId === trade._id}
+                                    className="h-7 text-[10px] px-2 border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold cursor-pointer"
+                                    title={`Sinkronkan ke Radar: SL Rp ${trade.radarSyncStatus.radarSL.toLocaleString("id-ID")} | TP1 Rp ${trade.radarSyncStatus.radarTP1.toLocaleString("id-ID")}`}
+                                  >
+                                    <Zap className="w-3 h-3 mr-0.5 text-amber-600 fill-amber-600" />
+                                    {syncingTradeId === trade._id ? "..." : "Sync"}
+                                  </Button>
+                                )}
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => {
-                                    setSelectedTradeForRisk(trade);
-                                    setNewStopLoss(trade.stopLossPrice);
-                                    setNewTp1(trade.targetPrice1 || 0);
-                                    setNewTp2(trade.targetPrice2 || 0);
-                                    setRiskModalOpen(true);
-                                  }}
+                                  onClick={() => openRiskModal(trade)}
                                   className="h-7 text-[10px] px-2 border-slate-200 hover:bg-slate-100 cursor-pointer"
                                 >
                                   Edit SL/TP
@@ -2526,17 +2609,44 @@ export default function TradePortfolioMonitoringCard() {
                 </div>
               </div>
 
-              {/* Trailing BEP Quick Button */}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setNewStopLoss(selectedTradeForRisk.entryPrice)}
-                className="w-full text-xs font-bold border-blue-200 text-blue-700 bg-blue-50/50 hover:bg-blue-100 h-8"
-              >
-                <ShieldAlert className="w-3.5 h-3.5 mr-1 text-blue-600" />
-                Kunci BEP: Naikkan SL ke Harga Beli (Rp {selectedTradeForRisk.entryPrice})
-              </Button>
+              {/* Quick Action Buttons */}
+              <div className="space-y-1.5">
+                {selectedTradeForRisk.radarSyncStatus?.canSync && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (selectedTradeForRisk.radarSyncStatus?.radarSL) {
+                        setNewStopLoss(selectedTradeForRisk.radarSyncStatus.radarSL);
+                      }
+                      if (selectedTradeForRisk.radarSyncStatus?.radarTP1) {
+                        setNewTp1(selectedTradeForRisk.radarSyncStatus.radarTP1);
+                      }
+                      if (selectedTradeForRisk.radarSyncStatus?.radarTP2) {
+                        setNewTp2(selectedTradeForRisk.radarSyncStatus.radarTP2);
+                      }
+                      setAutoSyncRadarInput(true);
+                    }}
+                    className="w-full text-xs font-bold border-amber-300 text-amber-900 bg-amber-50 hover:bg-amber-100 h-8"
+                  >
+                    <Zap className="w-3.5 h-3.5 mr-1 text-amber-600 fill-amber-600" />
+                    Salin Level Radar (SL: Rp {selectedTradeForRisk.radarSyncStatus.radarSL.toLocaleString("id-ID")} | TP1: Rp {selectedTradeForRisk.radarSyncStatus.radarTP1.toLocaleString("id-ID")})
+                  </Button>
+                )}
+
+                {/* Trailing BEP Quick Button */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setNewStopLoss(selectedTradeForRisk.entryPrice)}
+                  className="w-full text-xs font-bold border-blue-200 text-blue-700 bg-blue-50/50 hover:bg-blue-100 h-8"
+                >
+                  <ShieldAlert className="w-3.5 h-3.5 mr-1 text-blue-600" />
+                  Kunci BEP: Naikkan SL ke Harga Beli (Rp {selectedTradeForRisk.entryPrice})
+                </Button>
+              </div>
 
               <div className="space-y-1">
                 <label className="font-bold text-rose-600">Stop Loss (SL) Baru:</label>
@@ -2567,6 +2677,23 @@ export default function TradePortfolioMonitoringCard() {
                     className="h-8 border-indigo-200 text-indigo-700 font-semibold"
                   />
                 </div>
+              </div>
+
+              {/* Auto-Sync Radar Toggle */}
+              <div className="flex items-start gap-2 pt-2 border-t border-slate-200">
+                <input
+                  type="checkbox"
+                  id="autoSyncRadarCheck"
+                  checked={autoSyncRadarInput}
+                  onChange={(e) => setAutoSyncRadarInput(e.target.checked)}
+                  className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                />
+                <label htmlFor="autoSyncRadarCheck" className="text-[11px] text-slate-700 cursor-pointer leading-tight">
+                  <span className="font-bold text-slate-900">Ikuti update otomatis Radar (EOD 17:15 WIB)</span>
+                  <p className="text-[10px] text-slate-500 mt-0.5">
+                    Jika aktif, posisi ini otomatis sinkron dengan evaluasi sore jam 17:15. SL hanya dinaikkan (Ratchet), tidak pernah diturunkan.
+                  </p>
+                </label>
               </div>
             </div>
           )}

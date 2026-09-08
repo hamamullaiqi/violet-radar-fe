@@ -173,7 +173,7 @@ export default function SignalMonitoringCard() {
               <SignalStatusLegendDialog />
             </div>
             <CardDescription className="text-xs mt-0.5">
-              Sinyal terfokus: Radar Calon ARA & Beli Sore (Fokus Top 5) dan SWING Trade (Fokus Top 3) dengan skor tertinggi & probabilitas maksimal.
+              Sinyal terfokus: Radar Calon ARA & Beli Sore (Top 1 Terbaik) dan SWING Trade (Fokus Top 2) dengan skor tertinggi & probabilitas maksimal.
             </CardDescription>
           </div>
 
@@ -213,7 +213,7 @@ export default function SignalMonitoringCard() {
               <SelectContent className="bg-white border-slate-200 text-slate-900 text-xs">
                 <SelectItem value="ALL">Semua Strategi</SelectItem>
                 <SelectItem value="RADAR_CALON_ARA_BELI_SORE">CALON ARA & BELI SORE</SelectItem>
-                <SelectItem value="SWING_DEFAULT">SWING (Fokus Top 3)</SelectItem>
+                <SelectItem value="SWING_DEFAULT">SWING (Fokus Top 2)</SelectItem>
               </SelectContent>
             </Select>
 
