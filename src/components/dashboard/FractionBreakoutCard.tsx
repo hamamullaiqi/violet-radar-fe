@@ -62,14 +62,16 @@ export interface FractionBreakoutCandidate {
 
 export default function FractionBreakoutCard() {
   const [isRefreshingLive, setIsRefreshingLive] = useState<boolean>(false);
+  const [isRefreshingDb, setIsRefreshingDb] = useState<boolean>(false);
   const [liveData, setLiveData] = useState<{
     candidates: FractionBreakoutCandidate[];
     scannedAt: string;
     source: "LIVE_YAHOO" | "IDX_DATABASE";
     totalEvaluated: number;
+    fromCache?: boolean;
   } | null>(null);
 
-  // Initial load uses default endpoint (DB latest session)
+  // Initial load uses default endpoint (DB latest session, served from cache if available)
   const { data: initialData, loading, error, refetch } = useFetch("/api/strategies/fraction-breakout?limit=5", []);
 
   // Merge live refreshed data over initial fetch if available
@@ -77,6 +79,7 @@ export default function FractionBreakoutCard() {
   const candidates: FractionBreakoutCandidate[] = resultData?.candidates || [];
   const source = resultData?.source || "IDX_DATABASE";
   const scannedAt = resultData?.scannedAt ? new Date(resultData.scannedAt) : null;
+  const fromCache = Boolean(resultData?.fromCache);
 
   const handleRefreshLive = async () => {
     setIsRefreshingLive(true);
@@ -91,6 +94,21 @@ export default function FractionBreakoutCard() {
       await refetch();
     } finally {
       setIsRefreshingLive(false);
+    }
+  };
+
+  const handleRefreshDb = async () => {
+    setIsRefreshingDb(true);
+    try {
+      const res = await api.get("/api/strategies/fraction-breakout?bypassCache=true&limit=5");
+      if (res.data && res.data.data) {
+        setLiveData(res.data.data);
+      }
+    } catch (err) {
+      console.error("Failed to refresh fraction breakouts:", err);
+      await refetch();
+    } finally {
+      setIsRefreshingDb(false);
     }
   };
 
@@ -131,14 +149,14 @@ export default function FractionBreakoutCard() {
                 <Zap className="w-4 h-4 text-amber-600 fill-amber-500 animate-pulse" />
               </div>
               <CardTitle className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-2">
-                Radar Calon Ledakan 20%
+                Radar Calon Ledakan Harga
               </CardTitle>
 
               {/* Source Badge */}
               <span
                 className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border shadow-2xs ${source === "LIVE_YAHOO"
-                    ? "bg-amber-50 text-amber-900 border-amber-300"
-                    : "bg-indigo-50 text-indigo-900 border-indigo-200"
+                  ? "bg-amber-50 text-amber-900 border-amber-300"
+                  : "bg-indigo-50 text-indigo-900 border-indigo-200"
                   }`}
               >
                 <span
@@ -179,7 +197,7 @@ export default function FractionBreakoutCard() {
                 <DialogHeader>
                   <DialogTitle className="text-sm font-bold flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-amber-500" />
-                    Anatomi & Formula Sinyal Calon Ledakan 20%
+                    Anatomi & Formula Sinyal Calon Ledakan Harga
                   </DialogTitle>
                 </DialogHeader>
                 <div className="text-xs text-slate-600 space-y-3 pt-2 leading-relaxed">
@@ -230,8 +248,27 @@ export default function FractionBreakoutCard() {
             <span className="text-slate-500">Rentang Harga: <b>Rp 90 – Rp 2.500</b></span>
           </div>
 
-          <div className="text-[11px] text-slate-500 font-mono">
-            Terakhir dicek: <span className="font-bold text-slate-700">{formatScannedTime(scannedAt)}</span>
+          <div className="text-[11px] text-slate-500 font-mono flex items-center gap-1.5">
+            {fromCache && (
+              <span
+                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                title="Hasil screener disajikan seketika dari memory cache server"
+              >
+                ⚡ In-Memory Cache
+              </span>
+            )}
+            <span>
+              Terakhir dicek: <span className="font-bold text-slate-700">{formatScannedTime(scannedAt)}</span>
+            </span>
+            <button
+              type="button"
+              onClick={handleRefreshDb}
+              disabled={isRefreshingDb || loading}
+              title="Segarkan ulang database (Bypass Cache)"
+              className="p-1 hover:bg-slate-200/70 rounded text-slate-400 hover:text-slate-700 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3 h-3 ${isRefreshingDb ? "animate-spin text-purple-600" : ""}`} />
+            </button>
           </div>
         </div>
       </CardHeader>
