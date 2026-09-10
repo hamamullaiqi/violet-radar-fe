@@ -3189,20 +3189,26 @@ export default function TradePortfolioMonitoringCard() {
             const pnlPercent = trade.unrealizedPnLPercent !== undefined ? trade.unrealizedPnLPercent : (entryPrice > 0 ? ((currentPrice - entryPrice) / entryPrice) * 100 : 0);
             const isProfit = pnlRupiah >= 0;
 
-            const tp1Price = trade.targetPrice1 || Math.round(entryPrice * 1.05);
-            const tp2Price = trade.targetPrice2 || Math.round(entryPrice * 1.11);
+            // TP harus SELALU di atas entry price — jika data salah (TP < entry), fallback ke default
+            const rawTp1 = trade.targetPrice1 || 0;
+            const rawTp2 = trade.targetPrice2 || 0;
+            const tp1Price = rawTp1 > entryPrice ? rawTp1 : Math.round(entryPrice * 1.05);
+            const tp2Price = rawTp2 > entryPrice ? rawTp2 : Math.round(entryPrice * 1.11);
             const stopLossPrice = trade.stopLossPrice || Math.round(entryPrice * 0.95);
             const peakHigh = trade.peakHigh || Math.max(entryPrice, currentPrice);
             const peakGainPercent = Number((((peakHigh - entryPrice) / (entryPrice || 1)) * 100).toFixed(2));
+
+            // Flag: data TP tidak valid (tersimpan di bawah entry)
+            const isInvalidTP = entryPrice > 0 && ((rawTp1 > 0 && rawTp1 <= entryPrice) || (rawTp2 > 0 && rawTp2 <= entryPrice));
 
             const tp1Pct = entryPrice > 0 ? (((tp1Price - entryPrice) / entryPrice) * 100).toFixed(1) : "5.0";
             const tp2Pct = entryPrice > 0 ? (((tp2Price - entryPrice) / entryPrice) * 100).toFixed(1) : "11.0";
             const slPct = entryPrice > 0 ? (((stopLossPrice - entryPrice) / entryPrice) * 100).toFixed(1) : "-5.0";
 
-            // Stage Determination
+            // Stage Determination — isHitSL selalu prioritas utama
             const isHitSL = currentPrice <= stopLossPrice;
-            const isAtOrPastTP2 = peakHigh >= tp2Price;
-            const isAtOrPastTP1 = peakHigh >= tp1Price;
+            const isAtOrPastTP2 = !isHitSL && peakHigh >= tp2Price;
+            const isAtOrPastTP1 = !isHitSL && peakHigh >= tp1Price;
 
             let stageNumber = 1;
             let stageBadge = "🌱 TAHAP 1 (MENUJU TP1)";
@@ -3211,10 +3217,10 @@ export default function TradePortfolioMonitoringCard() {
             let actionDirective = "Kawal posisi sesuai batas Stop Loss di Rp " + stopLossPrice.toLocaleString("id-ID") + " dan target TP1 di Rp " + tp1Price.toLocaleString("id-ID") + ".";
 
             if (isHitSL) {
-              stageBadge = "🔴 MENYENTUH BATAS SL";
+              stageBadge = "🔴 MENYENTUH BATAS SL — CUT LOSS";
               stageBadgeClass = "bg-rose-600 text-white animate-pulse";
-              stageTitle = "Waspada: Batas Stop Loss Tersentuh";
-              actionDirective = "Harga menyentuh batas risiko! Segera cut loss seluruh " + totalLots + " lot di Rp " + stopLossPrice.toLocaleString("id-ID") + " untuk menyelamatkan kas modal.";
+              stageTitle = "⚠️ Batas Stop Loss Tersentuh — Eksekusi Cut Loss Segera!";
+              actionDirective = "Harga (Rp " + currentPrice.toLocaleString("id-ID") + ") menyentuh batas risiko SL (Rp " + stopLossPrice.toLocaleString("id-ID") + ")! Segera cut loss seluruh " + totalLots + " lot untuk menyelamatkan kas modal.";
             } else if (isAtOrPastTP2) {
               stageNumber = 3;
               stageBadge = "🟢 TAHAP 3 (TP2 TERCAPAI)";
@@ -3268,6 +3274,20 @@ export default function TradePortfolioMonitoringCard() {
                 </DialogHeader>
 
                 <div className="space-y-4 py-3 text-xs">
+                  {/* WARNING: Data TP tidak valid (di bawah entry) */}
+                  {isInvalidTP && (
+                    <div className="p-3 bg-amber-50 border border-amber-400 rounded-xl flex items-start gap-2.5">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-black text-amber-800 text-xs">⚠️ Data TP Tidak Valid — Otomatis Dikoreksi</p>
+                        <p className="text-amber-700 text-[11px] mt-0.5 leading-snug">
+                          Target TP1/TP2 tersimpan <b>di bawah harga entry</b> (Rp {entryPrice.toLocaleString("id-ID")}), yang tidak logis.
+                          Sistem otomatis menggunakan estimasi default (<b>TP1: +5% | TP2: +11%</b> dari entry). Segera update data TP yang benar via tombol <b>Edit SL/TP</b>.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* BOX 1: STATUS POSISI & TAHAP BERJALAN */}
                   <div className="p-3.5 bg-slate-900 text-white rounded-xl space-y-3 shadow-sm">
                     <div className="flex items-center justify-between border-b border-slate-800 pb-2">
@@ -3280,34 +3300,49 @@ export default function TradePortfolioMonitoringCard() {
                       </span>
                     </div>
 
-                    {/* Stepper Progress 3-Tahap */}
+                    {/* Stepper Progress — 2 tahap jika CUT LOSS, 3 tahap normal */}
                     <div className="space-y-1.5">
-                      <div className="grid grid-cols-3 gap-2 text-[10px] text-center font-bold">
-                        <div className={`p-2 rounded-lg border transition-all ${
-                          stageNumber >= 1
-                            ? "bg-slate-800 text-slate-200 border-slate-600"
-                            : "bg-slate-950/40 text-slate-600 border-slate-800"
-                        }`}>
-                          <div className="text-[9px] text-slate-400 uppercase">Tahap 1</div>
-                          <div className="text-xs mt-0.5">Entry & Modal ({totalLots} Lot)</div>
+                      {isHitSL ? (
+                        /* Mode CUT LOSS: hanya 2 tahap */
+                        <div className="grid grid-cols-2 gap-2 text-[10px] text-center font-bold">
+                          <div className="p-2 rounded-lg border bg-slate-800 text-slate-200 border-slate-600">
+                            <div className="text-[9px] text-slate-400 uppercase">Tahap 1</div>
+                            <div className="text-xs mt-0.5">Akumulasi / Entry ({totalLots} Lot)</div>
+                          </div>
+                          <div className="p-2 rounded-lg border bg-rose-500/20 text-rose-300 border-rose-500/60 font-black animate-pulse">
+                            <div className="text-[9px] text-rose-400 uppercase">Tahap 2</div>
+                            <div className="text-xs mt-0.5">Cut Loss (SL: Rp {stopLossPrice.toLocaleString("id-ID")})</div>
+                          </div>
                         </div>
-                        <div className={`p-2 rounded-lg border transition-all ${
-                          stageNumber >= 2
-                            ? "bg-amber-500/20 text-amber-300 border-amber-500/60 font-black"
-                            : "bg-slate-950/40 text-slate-600 border-slate-800"
-                        }`}>
-                          <div className="text-[9px] text-slate-400 uppercase">Tahap 2</div>
-                          <div className="text-xs mt-0.5">TP1 (Jual 50% Lot & BEP)</div>
+                      ) : (
+                        /* Mode Normal: 3 tahap */
+                        <div className="grid grid-cols-3 gap-2 text-[10px] text-center font-bold">
+                          <div className={`p-2 rounded-lg border transition-all ${
+                            stageNumber >= 1
+                              ? "bg-slate-800 text-slate-200 border-slate-600"
+                              : "bg-slate-950/40 text-slate-600 border-slate-800"
+                          }`}>
+                            <div className="text-[9px] text-slate-400 uppercase">Tahap 1</div>
+                            <div className="text-xs mt-0.5">Entry & Modal ({totalLots} Lot)</div>
+                          </div>
+                          <div className={`p-2 rounded-lg border transition-all ${
+                            stageNumber >= 2
+                              ? "bg-amber-500/20 text-amber-300 border-amber-500/60 font-black"
+                              : "bg-slate-950/40 text-slate-600 border-slate-800"
+                          }`}>
+                            <div className="text-[9px] text-slate-400 uppercase">Tahap 2</div>
+                            <div className="text-xs mt-0.5">TP1 (Jual 50% Lot & BEP)</div>
+                          </div>
+                          <div className={`p-2 rounded-lg border transition-all ${
+                            stageNumber >= 3
+                              ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/60 font-black"
+                              : "bg-slate-950/40 text-slate-600 border-slate-800"
+                          }`}>
+                            <div className="text-[9px] text-slate-400 uppercase">Tahap 3</div>
+                            <div className="text-xs mt-0.5">TP2 (Jual Sisa 50% Lot)</div>
+                          </div>
                         </div>
-                        <div className={`p-2 rounded-lg border transition-all ${
-                          stageNumber >= 3
-                            ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/60 font-black"
-                            : "bg-slate-950/40 text-slate-600 border-slate-800"
-                        }`}>
-                          <div className="text-[9px] text-slate-400 uppercase">Tahap 3</div>
-                          <div className="text-xs mt-0.5">TP2 (Jual Sisa 50% Lot)</div>
-                        </div>
-                      </div>
+                      )}
                     </div>
 
                     {/* Ringkasan Angka Kunci */}
@@ -3347,14 +3382,14 @@ export default function TradePortfolioMonitoringCard() {
                     </h4>
 
                     <div className="space-y-2">
-                      {/* LANGKAH 1: ENTRY & PROTEKSI */}
+                      {/* LANGKAH 1: AKUMULASI / ENTRY — Selalu Tampil */}
                       <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span className="w-5 h-5 rounded-full bg-slate-200 text-slate-700 font-black text-[10px] flex items-center justify-center">1</span>
-                            <span className="font-bold text-slate-800 text-xs">Tahap 1: Modal Awal & Posisi Entry</span>
+                            <span className="font-bold text-slate-800 text-xs">Tahap 1: Akumulasi / Posisi Entry</span>
                           </div>
-                          <Badge className="bg-slate-200 text-slate-700 text-[9px] font-bold">AKTIF</Badge>
+                          <Badge className="bg-slate-200 text-slate-700 text-[9px] font-bold">TERBUKA</Badge>
                         </div>
                         <p className="text-[11px] text-slate-600">
                           Beli <b>{totalLots} Lot</b> di harga <b>Rp {entryPrice.toLocaleString("id-ID")}</b> (Total Modal: Rp {totalCapital.toLocaleString("id-ID")}).
@@ -3362,130 +3397,172 @@ export default function TradePortfolioMonitoringCard() {
                         </p>
                       </div>
 
-                      {/* LANGKAH 2: TP1 */}
-                      <div className={`p-3 rounded-xl border space-y-1.5 transition-all ${
-                        isAtOrPastTP1
-                          ? "bg-amber-50/70 border-amber-300"
-                          : "bg-white border-slate-200"
-                      }`}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className={`w-5 h-5 rounded-full font-black text-[10px] flex items-center justify-center ${
-                              isAtOrPastTP1 ? "bg-amber-500 text-slate-950" : "bg-slate-200 text-slate-700"
-                            }`}>2</span>
-                            <span className="font-bold text-slate-900 text-xs">Tahap 2: Target Take Profit 1 (TP1)</span>
+                      {/* Jika kondisi CUT LOSS: tampilkan HANYA step Cut Loss */}
+                      {isHitSL ? (
+                        <div className="p-3 rounded-xl border-2 border-rose-500 bg-rose-50 space-y-2 animate-in fade-in-50">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="w-5 h-5 rounded-full bg-rose-600 text-white font-black text-[10px] flex items-center justify-center">2</span>
+                              <span className="font-bold text-rose-800 text-xs">⚠️ Tahap 2: Eksekusi Cut Loss Sekarang!</span>
+                            </div>
+                            <Badge className="bg-rose-600 text-white font-black text-[9px] animate-pulse">HARUS EKSEKUSI</Badge>
                           </div>
-                          <Badge className={isAtOrPastTP1 ? "bg-amber-500 text-slate-950 font-bold text-[9px]" : "bg-slate-100 text-slate-600 text-[9px]"}>
-                            {isAtOrPastTP1 ? "TERCAPAI (KUNCI BEP)" : "TARGET"}
-                          </Badge>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] bg-white p-2 rounded-lg border border-rose-200">
+                            <div>
+                              <span className="text-slate-400 block text-[10px]">Batas Harga SL:</span>
+                              <span className="font-black text-rose-600">Rp {stopLossPrice.toLocaleString("id-ID")}</span>
+                              <span className="text-[9.5px] text-slate-500 block">({slPct}%)</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 block text-[10px]">Lot yang Di-Cut:</span>
+                              <span className="font-black text-slate-900">100% ({totalLots} Lot)</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 block text-[10px]">Potensi Rugi Maks:</span>
+                              <span className="font-bold text-rose-600">-Rp {Math.abs((entryPrice - stopLossPrice) * totalLots * 100).toLocaleString("id-ID")}</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 block text-[10px]">Kas Diselamatkan:</span>
+                              <span className="font-bold text-slate-800">Rp {(stopLossPrice * totalLots * 100).toLocaleString("id-ID")}</span>
+                            </div>
+                          </div>
+
+                          <p className="text-[10.5px] text-rose-700 leading-snug">
+                            🛑 <b>Disiplin Trader Wajib:</b> Harga sudah menembus batas Stop Loss! Jual <b>seluruh {totalLots} lot</b> sekarang di Rp {stopLossPrice.toLocaleString("id-ID")} tanpa menunggu. Jangan averaging down — lindungi modal Anda!
+                          </p>
                         </div>
+                      ) : (
+                        /* Mode Normal: tampilkan TP1 dan TP2 */
+                        <>
+                          {/* LANGKAH 2: TP1 */}
+                          <div className={`p-3 rounded-xl border space-y-1.5 transition-all ${
+                            isAtOrPastTP1
+                              ? "bg-amber-50/70 border-amber-300"
+                              : "bg-white border-slate-200"
+                          }`}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className={`w-5 h-5 rounded-full font-black text-[10px] flex items-center justify-center ${
+                                  isAtOrPastTP1 ? "bg-amber-500 text-slate-950" : "bg-slate-200 text-slate-700"
+                                }`}>2</span>
+                                <span className="font-bold text-slate-900 text-xs">Tahap 2: Target Take Profit 1 (TP1)</span>
+                              </div>
+                              <Badge className={isAtOrPastTP1 ? "bg-amber-500 text-slate-950 font-bold text-[9px]" : "bg-slate-100 text-slate-600 text-[9px]"}>
+                                {isAtOrPastTP1 ? "TERCAPAI (KUNCI BEP)" : "TARGET"}
+                              </Badge>
+                            </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] bg-white p-2 rounded-lg border border-slate-200/80">
-                          <div>
-                            <span className="text-slate-400 block text-[10px]">Harga Jual TP1:</span>
-                            <span className="font-black text-emerald-700">Rp {tp1Price.toLocaleString("id-ID")}</span>
-                            <span className="text-[9.5px] text-slate-500 block">(+{tp1Pct}%)</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-400 block text-[10px]">Lot yang Dijual:</span>
-                            <span className="font-black text-slate-900">50% ({lotsTP1} Lot)</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-400 block text-[10px]">Uang Masuk Kas:</span>
-                            <span className="font-bold text-slate-800">Rp {(tp1Price * lotsTP1 * 100).toLocaleString("id-ID")}</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-400 block text-[10px]">Cuan Terkunci:</span>
-                            <span className="font-bold text-emerald-600">+Rp {((tp1Price - entryPrice) * lotsTP1 * 100).toLocaleString("id-ID")}</span>
-                          </div>
-                        </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] bg-white p-2 rounded-lg border border-slate-200/80">
+                              <div>
+                                <span className="text-slate-400 block text-[10px]">Harga Jual TP1:</span>
+                                <span className="font-black text-emerald-700">Rp {tp1Price.toLocaleString("id-ID")}</span>
+                                <span className="text-[9.5px] text-slate-500 block">({Number(tp1Pct) >= 0 ? "+" : ""}{tp1Pct}%)</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 block text-[10px]">Lot yang Dijual:</span>
+                                <span className="font-black text-slate-900">50% ({lotsTP1} Lot)</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 block text-[10px]">Uang Masuk Kas:</span>
+                                <span className="font-bold text-slate-800">Rp {(tp1Price * lotsTP1 * 100).toLocaleString("id-ID")}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 block text-[10px]">Cuan Terkunci:</span>
+                                {(() => { const gain1 = (tp1Price - entryPrice) * lotsTP1 * 100; return <span className={`font-bold ${gain1 >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{gain1 >= 0 ? "+" : ""}Rp {gain1.toLocaleString("id-ID")}</span>; })()}
+                              </div>
+                            </div>
 
-                        <p className="text-[10.5px] text-amber-900 leading-snug">
-                          🔒 <b>Aksi Wajib Begitu TP1 Tersentuh:</b> Jual <b>{lotsTP1} Lot (50%)</b> dan segera naikkan Stop Loss ke <b>BEP (Rp {entryPrice.toLocaleString("id-ID")})</b>. Sisa posisi Anda resmi 100% bebas risiko modal!
-                        </p>
-                      </div>
+                            <p className="text-[10.5px] text-amber-900 leading-snug">
+                              🔒 <b>Aksi Wajib Begitu TP1 Tersentuh:</b> Jual <b>{lotsTP1} Lot (50%)</b> dan segera naikkan Stop Loss ke <b>BEP (Rp {entryPrice.toLocaleString("id-ID")})</b>. Sisa posisi Anda resmi 100% bebas risiko modal!
+                            </p>
+                          </div>
 
-                      {/* LANGKAH 3: TP2 */}
-                      <div className={`p-3 rounded-xl border space-y-1.5 transition-all ${
-                        isAtOrPastTP2
-                          ? "bg-emerald-50/70 border-emerald-300"
-                          : "bg-white border-slate-200"
-                      }`}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className={`w-5 h-5 rounded-full font-black text-[10px] flex items-center justify-center ${
-                              isAtOrPastTP2 ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-700"
-                            }`}>3</span>
-                            <span className="font-bold text-slate-900 text-xs">Tahap 3: Target Take Profit 2 (TP2)</span>
-                          </div>
-                          <Badge className={isAtOrPastTP2 ? "bg-emerald-600 text-white font-bold text-[9px]" : "bg-slate-100 text-slate-600 text-[9px]"}>
-                            {isAtOrPastTP2 ? "TERCAPAI (SELESAI)" : "TARGET"}
-                          </Badge>
-                        </div>
+                          {/* LANGKAH 3: TP2 */}
+                          <div className={`p-3 rounded-xl border space-y-1.5 transition-all ${
+                            isAtOrPastTP2
+                              ? "bg-emerald-50/70 border-emerald-300"
+                              : "bg-white border-slate-200"
+                          }`}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className={`w-5 h-5 rounded-full font-black text-[10px] flex items-center justify-center ${
+                                  isAtOrPastTP2 ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-700"
+                                }`}>3</span>
+                                <span className="font-bold text-slate-900 text-xs">Tahap 3: Target Take Profit 2 (TP2)</span>
+                              </div>
+                              <Badge className={isAtOrPastTP2 ? "bg-emerald-600 text-white font-bold text-[9px]" : "bg-slate-100 text-slate-600 text-[9px]"}>
+                                {isAtOrPastTP2 ? "TERCAPAI (SELESAI)" : "TARGET"}
+                              </Badge>
+                            </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] bg-white p-2 rounded-lg border border-slate-200/80">
-                          <div>
-                            <span className="text-slate-400 block text-[10px]">Harga Jual TP2:</span>
-                            <span className="font-black text-emerald-700">Rp {tp2Price.toLocaleString("id-ID")}</span>
-                            <span className="text-[9.5px] text-slate-500 block">(+{tp2Pct}%)</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-400 block text-[10px]">Lot yang Dijual:</span>
-                            <span className="font-black text-slate-900">Sisa 50% ({lotsTP2} Lot)</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-400 block text-[10px]">Uang Masuk Kas:</span>
-                            <span className="font-bold text-slate-800">Rp {(tp2Price * lotsTP2 * 100).toLocaleString("id-ID")}</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-400 block text-[10px]">Cuan Terkunci:</span>
-                            <span className="font-bold text-emerald-600">+Rp {((tp2Price - entryPrice) * lotsTP2 * 100).toLocaleString("id-ID")}</span>
-                          </div>
-                        </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] bg-white p-2 rounded-lg border border-slate-200/80">
+                              <div>
+                                <span className="text-slate-400 block text-[10px]">Harga Jual TP2:</span>
+                                <span className="font-black text-emerald-700">Rp {tp2Price.toLocaleString("id-ID")}</span>
+                                <span className="text-[9.5px] text-slate-500 block">({Number(tp2Pct) >= 0 ? "+" : ""}{tp2Pct}%)</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 block text-[10px]">Lot yang Dijual:</span>
+                                <span className="font-black text-slate-900">Sisa 50% ({lotsTP2} Lot)</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 block text-[10px]">Uang Masuk Kas:</span>
+                                <span className="font-bold text-slate-800">Rp {(tp2Price * lotsTP2 * 100).toLocaleString("id-ID")}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 block text-[10px]">Cuan Terkunci:</span>
+                                {(() => { const gain2 = (tp2Price - entryPrice) * lotsTP2 * 100; return <span className={`font-bold ${gain2 >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{gain2 >= 0 ? "+" : ""}Rp {gain2.toLocaleString("id-ID")}</span>; })()}
+                              </div>
+                            </div>
 
-                        <p className="text-[10.5px] text-emerald-900 leading-snug">
-                          💰 <b>Realisasi Penuh:</b> Jual sisa <b>{lotsTP2} Lot</b> di target TP2 untuk merealisasikan seluruh potensi keuntungan dan mengembalikan seluruh modal & cuan ke saldo kas portofolio Anda.
-                        </p>
-                      </div>
+                            <p className="text-[10.5px] text-emerald-900 leading-snug">
+                              💰 <b>Realisasi Penuh:</b> Jual sisa <b>{lotsTP2} Lot</b> di target TP2 untuk merealisasikan seluruh potensi keuntungan dan mengembalikan seluruh modal & cuan ke saldo kas portofolio Anda.
+                            </p>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
 
-                  {/* BOX 3: PANDUAN STOP LOSS KETAT (JIKA HARUS CUT LOSS) */}
-                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl space-y-2">
-                    <div className="flex items-center justify-between text-rose-800 font-bold">
-                      <div className="flex items-center gap-1.5">
-                        <ShieldAlert className="w-4 h-4 text-rose-600" />
-                        <span>Kondisi Stop Loss (Jika Harus Cut Loss)</span>
+                  {/* BOX 3: PANDUAN STOP LOSS — hanya tampil saat BELUM hit SL */}
+                  {!isHitSL && (
+                    <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl space-y-2">
+                      <div className="flex items-center justify-between text-rose-800 font-bold">
+                        <div className="flex items-center gap-1.5">
+                          <ShieldAlert className="w-4 h-4 text-rose-600" />
+                          <span>Batas Stop Loss (Proteksi Modal)</span>
+                        </div>
+                        <Badge className="bg-rose-100 text-rose-700 border-rose-300">
+                          BATAS PENGAMAN
+                        </Badge>
                       </div>
-                      <Badge className={isHitSL ? "bg-rose-600 text-white font-black animate-pulse" : "bg-rose-100 text-rose-700 border-rose-300"}>
-                        {isHitSL ? "HARUS CUT LOSS SEKARANG!" : "BATAS PENGAMAN"}
-                      </Badge>
-                    </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] bg-white p-2 rounded-lg border border-rose-200">
-                      <div>
-                        <span className="text-slate-400 block text-[10px]">Batas Harga SL:</span>
-                        <span className="font-black text-rose-600">Rp {stopLossPrice.toLocaleString("id-ID")}</span>
-                        <span className="text-[9.5px] text-slate-500 block">({slPct}%)</span>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] bg-white p-2 rounded-lg border border-rose-200">
+                        <div>
+                          <span className="text-slate-400 block text-[10px]">Batas Harga SL:</span>
+                          <span className="font-black text-rose-600">Rp {stopLossPrice.toLocaleString("id-ID")}</span>
+                          <span className="text-[9.5px] text-slate-500 block">({slPct}%)</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block text-[10px]">Lot yang Harus Di-Cut:</span>
+                          <span className="font-black text-slate-900">100% ({totalLots} Lot)</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block text-[10px]">Potensi Risiko Maksimal:</span>
+                          <span className="font-bold text-rose-600">-Rp {Math.abs((entryPrice - stopLossPrice) * totalLots * 100).toLocaleString("id-ID")}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block text-[10px]">Kas Diselamatkan:</span>
+                          <span className="font-bold text-slate-800">Rp {(stopLossPrice * totalLots * 100).toLocaleString("id-ID")}</span>
+                        </div>
                       </div>
-                      <div>
-                        <span className="text-slate-400 block text-[10px]">Lot yang Harus Di-Cut:</span>
-                        <span className="font-black text-slate-900">100% ({totalLots} Lot)</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 block text-[10px]">Potensi Risiko Maksimal:</span>
-                        <span className="font-bold text-rose-600">-Rp {Math.abs((entryPrice - stopLossPrice) * totalLots * 100).toLocaleString("id-ID")}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 block text-[10px]">Kas Diselamatkan:</span>
-                        <span className="font-bold text-slate-800">Rp {(stopLossPrice * totalLots * 100).toLocaleString("id-ID")}</span>
-                      </div>
-                    </div>
 
-                    <p className="text-[10.5px] text-rose-700 leading-snug">
-                      ⚠️ <b>Disiplin Trader:</b> Jika harga menembus level <b>Rp {stopLossPrice.toLocaleString("id-ID")}</b>, langsung eksekusi cut loss 100% tanpa tawar-menawar. Jangan lakukan averaging down saat saham sedang breakdown support!
-                    </p>
-                  </div>
+                      <p className="text-[10.5px] text-rose-700 leading-snug">
+                        ⚠️ <strong>Disiplin Trader:</strong> Jika harga menembus level <strong>Rp {stopLossPrice.toLocaleString("id-ID")}</strong>, langsung eksekusi cut loss 100% tanpa tawar-menawar. Jangan lakukan averaging down saat saham sedang breakdown support!
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <DialogFooter className="border-t border-slate-100 pt-3 flex flex-col sm:flex-row gap-2">
