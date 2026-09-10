@@ -742,8 +742,16 @@ export default function SignalMonitoringCard() {
                         </TableCell>
 
                         {/* SETUP MODE */}
-                        <TableCell className="font-mono text-[10px] text-slate-500 py-2.5 px-3">
-                          {sig.setupMode || sig.setup || "DEFAULT"}
+                        <TableCell className="py-2.5 px-3">
+                          {(sig.setupMode === "TURTLE_BREAKOUT" || sig.setup === "TURTLE_BREAKOUT") ? (
+                            <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded text-[10px]">
+                              🐢 TURTLE
+                            </span>
+                          ) : (
+                            <span className="font-mono text-[10px] text-slate-500">
+                              {sig.setupMode || sig.setup || "DEFAULT"}
+                            </span>
+                          )}
                         </TableCell>
 
                         {/* ENTRY PRICE */}

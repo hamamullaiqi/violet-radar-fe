@@ -28,6 +28,11 @@ interface TradingPlanData {
   majorBreakoutLevel?: number;
   majorBreakoutType?: string;
   majorBreakoutNote?: string;
+  entryWarning?: {
+    isProhibited: boolean;
+    alertBadge: string;
+    message: string;
+  };
 }
 
 interface TradingPlanSpotlightProps {
@@ -151,6 +156,28 @@ export default function TradingPlanSpotlight({
         </div>
       )}
 
+      {/* Prohibition Warning Banner */}
+      {plan.entryWarning?.isProhibited && (
+        <div className="relative z-10 mt-4 p-4 rounded-xl bg-gradient-to-r from-rose-950/90 via-red-900/80 to-rose-950/90 border-2 border-rose-500 text-white flex flex-col sm:flex-row items-start sm:items-center gap-3.5 shadow-lg backdrop-blur-md">
+          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-rose-500/30 border border-rose-400/50 text-rose-200 text-xl font-black shrink-0">
+            🚫
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2.5 py-0.5 rounded-md bg-rose-500 text-white text-[11px] font-black tracking-wider uppercase shadow-xs">
+                {plan.entryWarning.alertBadge}
+              </span>
+              <span className="text-xs font-bold text-rose-200">
+                Risiko Tinggi / Belum Ada Setup Beli
+              </span>
+            </div>
+            <p className="text-xs text-rose-100/90 leading-relaxed font-medium">
+              {plan.entryWarning.message}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* 4 Pillars Grid (SL, Entry, TP1, TP2) */}
       <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 my-5">
         {/* 1. Stop Loss */}
@@ -172,25 +199,41 @@ export default function TradingPlanSpotlight({
 
         {/* 2. Entry Zone */}
         <div className={`p-4 rounded-xl backdrop-blur-xs transition-all ${
-          isInsideEntry
-            ? "bg-indigo-950/80 border-2 border-indigo-400 shadow-md ring-2 ring-indigo-500/20"
-            : "bg-slate-800/80 border border-indigo-500/30 hover:border-indigo-400/60"
+          plan.entryWarning?.isProhibited
+            ? "bg-rose-950/30 border border-rose-500/40"
+            : isInsideEntry
+              ? "bg-indigo-950/80 border-2 border-indigo-400 shadow-md ring-2 ring-indigo-500/20"
+              : "bg-slate-800/80 border border-indigo-500/30 hover:border-indigo-400/60"
         }`}>
           <div className="flex items-center justify-between text-[11px] font-bold text-indigo-300 uppercase mb-1">
             <span className="flex items-center gap-1.5">
               <Compass className="w-3.5 h-3.5 text-indigo-400" />
               Area Beli (Entry)
             </span>
-            {isInsideEntry && (
+            {plan.entryWarning?.isProhibited ? (
+              <span className="px-1.5 py-0.2 rounded bg-rose-500/30 text-rose-200 border border-rose-400/40 text-[10px]">
+                Dilarang
+              </span>
+            ) : isInsideEntry ? (
               <span className="px-1.5 py-0.2 rounded bg-indigo-500/30 text-indigo-200 border border-indigo-400/40 text-[10px]">
                 Active
               </span>
-            )}
+            ) : null}
           </div>
-          <div className="text-lg sm:text-xl font-black text-white font-mono tracking-tight">
-            {fmtPrice(plan.entryArea.min)} – {fmtPrice(plan.entryArea.max)}
+          <div className={`font-mono tracking-tight ${
+            plan.entryWarning?.isProhibited
+              ? "text-sm sm:text-base font-bold text-rose-300"
+              : "text-lg sm:text-xl font-black text-white"
+          }`}>
+            {plan.entryWarning?.isProhibited
+              ? "Tunggu Konfirmasi"
+              : `${fmtPrice(plan.entryArea.min)} – ${fmtPrice(plan.entryArea.max)}`}
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">Rentang harga optimal untuk akumulasi posisi</p>
+          <p className="text-[11px] text-slate-400 mt-1">
+            {plan.entryWarning?.isProhibited
+              ? `Tunggu konfirmasi di Rp ${fmtPrice(triggerPrice || plan.entryArea.min)}`
+              : "Rentang harga optimal untuk akumulasi posisi"}
+          </p>
         </div>
 
         {/* 3. Target 1 */}

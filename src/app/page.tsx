@@ -371,7 +371,12 @@ export default function Dashboard() {
   const [stats, setStats] = useState(BACKTEST_FALLBACK.unified);
   const [strategies, setStrategies] = useState(BACKTEST_FALLBACK.strategies);
   const [signals, setSignals] = useState<any[]>([]);
-  const [marketRegime, setMarketRegime] = useState({ regime: "BULLISH", score: 20 });
+  const [marketRegime, setMarketRegime] = useState<{
+    regime: string;
+    score: number;
+    close?: number;
+    changePercent?: number;
+  }>({ regime: "NEUTRAL", score: 0 });
   const [runningJob, setRunningJob] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
@@ -456,6 +461,21 @@ export default function Dashboard() {
         }
       } catch (e) {
         setSignals(BACKTEST_FALLBACK.recentSignals);
+      }
+
+      try {
+        const regimeRes = await api.get("/api/market-data/ihsg/regime");
+        if (regimeRes.data?.data) {
+          const d = regimeRes.data.data;
+          setMarketRegime({
+            regime: d.regime || "NEUTRAL",
+            score: d.marketScore ?? 0,
+            close: d.close,
+            changePercent: d.return1D ?? (d.changePercent ?? 0),
+          });
+        }
+      } catch (regimeErr) {
+        console.warn("Failed to fetch live IHSG regime:", regimeErr);
       }
 
       setMessage({ type: "success", text: "Dashboard tersinkronisasi dengan database backend!" });
@@ -583,9 +603,29 @@ export default function Dashboard() {
 
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
           {/* Regime Indicator */}
-          <div className="hidden md:flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200 text-xs">
-            <span className="text-slate-500 font-medium">IHSG:</span>
-            <span className="font-bold text-blue-600">{marketRegime.regime} (+{marketRegime.score})</span>
+          <div className="hidden md:flex items-center gap-2 bg-slate-100/90 hover:bg-slate-200/80 transition-colors px-2.5 py-1 rounded-md border border-slate-200 text-xs shadow-2xs">
+            <span className="text-slate-500 font-semibold">IHSG:</span>
+            {marketRegime.close ? (
+              <span className="font-mono font-bold text-slate-800">
+                {marketRegime.close.toLocaleString("id-ID", { maximumFractionDigits: 1 })}
+              </span>
+            ) : null}
+            {marketRegime.changePercent !== undefined && (
+              <span className={`text-[11px] font-bold ${marketRegime.changePercent >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                ({marketRegime.changePercent >= 0 ? "+" : ""}{marketRegime.changePercent.toFixed(2)}%)
+              </span>
+            )}
+            <span
+              className={`px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                marketRegime.regime === "BULLISH"
+                  ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                  : marketRegime.regime === "BEARISH"
+                  ? "bg-rose-100 text-rose-800 border border-rose-300"
+                  : "bg-amber-100 text-amber-800 border border-amber-300"
+              }`}
+            >
+              {marketRegime.regime}
+            </span>
           </div>
 
           {/* Dedicated Portfolio & Execution Page Button */}
@@ -1018,6 +1058,20 @@ export default function Dashboard() {
                   <CardDescription className="text-xs">Memicu sinkronisasi data bursa dan evaluasi sinyal secara manual.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-lg border border-slate-100">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900">Sync IHSG (Yahoo Finance)</h4>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Tarik data candle penutupan IHSG (^JKSE) harian terbaru dan evaluasi ulang market regime.</p>
+                    </div>
+                    <Button
+                      onClick={() => runJob("Sync IHSG", "/api/market-data/ihsg/fetch-daily")}
+                      disabled={!connected || runningJob === "Sync IHSG"}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-8 font-semibold"
+                    >
+                      {runningJob === "Sync IHSG" ? "Memproses..." : <><Play className="h-3 w-3 mr-1" /> Sync IHSG</>}
+                    </Button>
+                  </div>
+
                   <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-lg border border-slate-100">
                     <div>
                       <h4 className="text-xs font-bold text-slate-900">EOD Post-Market & Replay Job</h4>
