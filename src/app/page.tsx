@@ -69,6 +69,7 @@ import GrowthLeadersCard from "@/components/dashboard/GrowthLeadersCard";
 import LoseLeadersCard from "@/components/dashboard/LoseLeadersCard";
 import AraPatternsCard from "@/components/dashboard/AraPatternsCard";
 import SignalMonitoringCard from "@/components/dashboard/SignalMonitoringCard";
+import SmartMoneyRadarCard from "@/components/dashboard/SmartMoneyRadarCard";
 import TradePortfolioMonitoringCard from "@/components/dashboard/TradePortfolioMonitoringCard";
 import SearchTickers from "@/components/SearchTickers";
 
@@ -806,6 +807,9 @@ export default function Dashboard() {
         {/* PAGE 2: SPECIAL RADARS PASAR */}
         {activePage === "radars" && (
           <div className="space-y-6 animate-in fade-in-50 duration-150">
+
+            {/* 💎 BANDAR COST & SAFE ENTRY RADAR (SMART MONEY) */}
+            <SmartMoneyRadarCard />
 
             {/* 🎯 HEADLINERS: RADAR CALON ARA & RADAR CALON LEDAKAN 20% (PRE-BREAKOUT FRAKSI) */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">

@@ -12,6 +12,7 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import { Search, ChevronRight, TrendingUp } from "lucide-react";
+import TickerLogo from "@/components/ui/TickerLogo";
 
 const SearchTickers = () => {
   const [open, setOpen] = useState<boolean>(false);
@@ -85,9 +86,7 @@ const SearchTickers = () => {
                     className="flex cursor-pointer items-center justify-between rounded-xl px-3 py-2.5 transition-colors hover:bg-indigo-50/70 aria-selected:bg-indigo-50/70 my-0.5"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-black text-xs shadow-xs">
-                        {code.slice(0, 2)}
-                      </div>
+                      <TickerLogo ticker={code} size="md" className="w-8 h-8 rounded-lg shrink-0 border border-slate-200/90 shadow-2xs" />
                       <div>
                         <div className="font-extrabold text-sm text-slate-900 tracking-wide">
                           {code.toUpperCase()}

@@ -40,6 +40,8 @@ import SearchTickers from "@/components/SearchTickers";
 import TickerChart from "@/components/ticker/TickerChart";
 import MarkdownNarrative from "@/components/ticker/MarkdownNarrative";
 import TradingPlanSpotlight from "@/components/ticker/TradingPlanSpotlight";
+import BandarCostSpotlight from "@/components/ticker/BandarCostSpotlight";
+import TickerLogo from "@/components/ui/TickerLogo";
 
 // ─── Helpers ────────────────────────────────────────────
 function fmtRp(val: number): string {
@@ -307,9 +309,7 @@ export default function TickerDetailPage() {
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
                 {/* Identity & Company */}
                 <div className="flex items-start sm:items-center gap-4">
-                  <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 text-white font-black text-xl shadow-md shrink-0">
-                    {symbol?.slice(0, 2)}
-                  </div>
+                  <TickerLogo ticker={symbol} size="xl" className="shadow-md" />
                   <div>
                     <div className="flex items-center gap-2.5 flex-wrap">
                       <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
@@ -459,6 +459,9 @@ export default function TickerDetailPage() {
                     onViewChart={() => setActiveTab("chart")}
                   />
                 )}
+
+                {/* 🛡️ BANDAR COST & SAFE ENTRY RADAR */}
+                <BandarCostSpotlight symbol={symbol} currentPrice={ps?.currentPrice} />
 
                 {/* Metric Summary Cards */}
                 {sm && (
@@ -1079,6 +1082,9 @@ export default function TickerDetailPage() {
             {/* 4. FOREIGN FLOW TAB */}
             {activeTab === "foreign" && (
               <div className="space-y-5 animate-in fade-in-50 duration-200">
+                {/* 🛡️ BANDAR COST & SMART MONEY DEEP DIVE */}
+                <BandarCostSpotlight symbol={symbol} currentPrice={ps?.currentPrice} />
+
                 {ff && (
                   <>
                     <Card className="border-slate-200 bg-white shadow-sm overflow-hidden">
