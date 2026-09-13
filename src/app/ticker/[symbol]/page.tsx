@@ -930,15 +930,29 @@ export default function TickerDetailPage() {
                                       variant="outline"
                                       className={`text-[10px] px-2 py-0.5 ${signalStatusBadge(sig.status)}`}
                                     >
-                                      {sig.status}
+                                      {sig.status === "PENDING"
+                                        ? "PENDING (ANTRE)"
+                                        : sig.status === "EXPIRED" && (sig.wasTriggered === false || sig.realizedPnLPercent === 0)
+                                        ? "EXPIRED (UNFILLED)"
+                                        : sig.status}
                                     </Badge>
                                   </TableCell>
 
                                   {/* PNL */}
                                   <TableCell
-                                    className={`text-xs text-right font-bold font-mono py-2.5 px-3 ${pctColor(sig.realizedPnLPercent || 0)}`}
+                                    className={`text-xs text-right font-bold font-mono py-2.5 px-3 ${
+                                      sig.status === "PENDING"
+                                        ? "text-amber-600"
+                                        : sig.status === "EXPIRED" && (sig.wasTriggered === false || sig.realizedPnLPercent === 0)
+                                        ? "text-slate-400"
+                                        : pctColor(sig.realizedPnLPercent || 0)
+                                    }`}
                                   >
-                                    {sig.realizedPnLPercent !== undefined
+                                    {sig.status === "PENDING"
+                                      ? "Antre Beli"
+                                      : sig.status === "EXPIRED" && (sig.wasTriggered === false || sig.realizedPnLPercent === 0)
+                                      ? "0.0% (Unfilled)"
+                                      : sig.realizedPnLPercent !== undefined
                                       ? `${sig.realizedPnLPercent >= 0 ? "+" : ""}${sig.realizedPnLPercent}%`
                                       : "-"}
                                   </TableCell>

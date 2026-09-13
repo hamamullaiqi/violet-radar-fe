@@ -16,7 +16,8 @@ import {
   Scale,
   Calendar,
   Check,
-  HelpCircle
+  HelpCircle,
+  TimerOff
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -687,6 +688,7 @@ export default function SignalMonitoringCard() {
                     const isActive = sig.status === "ACTIVE";
                     const isPending = sig.status === "PENDING";
                     const isExpired = sig.status === "EXPIRED";
+                    const isUnfilled = isExpired && (sig.wasTriggered === false || pnl === 0);
                     const isTrailingWin = (sig.status === "HIT_SL" || sig.status === "TRAILING_WIN") && pnl > 0;
 
                     const entryVal = Number(sig.entryPrice || sig.entry || 0);
@@ -734,7 +736,7 @@ export default function SignalMonitoringCard() {
                                 ? "border-emerald-200 bg-emerald-50 text-emerald-800 text-[10px]"
                                 : stratType === "BOUNCING" || stratType === "REVERSAL" || sig.strategyId?.includes("BOUNC") || sig.strategyId?.includes("REVERSAL")
                                 ? "border-purple-200 bg-purple-50 text-purple-800 text-[10px]"
-                                : "border-amber-200 bg-amber-50 text-amber-800 text-[10px]"
+                                : "border-slate-200 bg-slate-50 text-slate-700 text-[10px]"
                             }
                           >
                             {stratType === "RADAR_CALON_ARA_BELI_SORE" ? "CALON ARA & BELI SORE" : stratType === "REVERSAL" ? "BOUNCING" : stratType.replace(/_/g, " ")}
@@ -743,15 +745,36 @@ export default function SignalMonitoringCard() {
 
                         {/* SETUP MODE */}
                         <TableCell className="py-2.5 px-3">
-                          {(sig.setupMode === "TURTLE_BREAKOUT" || sig.setup === "TURTLE_BREAKOUT") ? (
-                            <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded text-[10px]">
-                              🐢 TURTLE
-                            </span>
-                          ) : (
-                            <span className="font-mono text-[10px] text-slate-500">
-                              {sig.setupMode || sig.setup || "DEFAULT"}
-                            </span>
-                          )}
+                          <div className="flex flex-col gap-1 items-start">
+                            {(sig.setupMode === "TURTLE_BREAKOUT" || sig.setup === "TURTLE_BREAKOUT") ? (
+                              <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded text-[10px]">
+                                🐢 TURTLE
+                              </span>
+                            ) : (
+                              <span className="font-mono text-[10px] text-slate-500">
+                                {sig.setupMode || sig.setup || "DEFAULT"}
+                              </span>
+                            )}
+                            {activeTab === "ALL" && (
+                              <span
+                                className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${
+                                  isPending
+                                    ? "bg-amber-50 text-amber-700 border-amber-200"
+                                    : isActive
+                                    ? "bg-blue-50 text-blue-700 border-blue-200"
+                                    : isHitTp1 || isHitTp2
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                    : isHitSl
+                                    ? "bg-rose-50 text-rose-700 border-rose-200"
+                                    : isUnfilled
+                                    ? "bg-slate-100 text-slate-500 border-slate-200"
+                                    : "bg-slate-100 text-slate-600 border-slate-200"
+                                }`}
+                              >
+                                {isPending ? "⏳ PENDING" : isActive ? "🟢 ACTIVE" : isUnfilled ? "⚪ UNFILLED (0%)" : sig.status}
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
 
                         {/* ENTRY PRICE */}
@@ -850,7 +873,7 @@ export default function SignalMonitoringCard() {
 
                         {/* PEAK PRICE */}
                         <TableCell className="text-right font-mono py-2.5 px-3">
-                          {sig.highSinceEntry ? (
+                          {sig.highSinceEntry && !isPending && !isUnfilled ? (
                             <div className={`inline-flex items-center justify-end gap-1 font-bold ${peakDiff > 0 ? "text-emerald-600" : peakDiff < 0 ? "text-rose-600" : "text-slate-700"
                               }`}>
                               {peakDiff > 0 ? (
@@ -870,7 +893,7 @@ export default function SignalMonitoringCard() {
 
                         {/* LOW PRICE (ENTRY VS LOW / MAE) */}
                         <TableCell className="text-right font-mono py-2.5 px-3">
-                          {lowVal > 0 ? (
+                          {lowVal > 0 && !isPending && !isUnfilled ? (
                             <div className={`inline-flex items-center justify-end gap-1 font-bold ${lowDiff < 0 ? "text-rose-600" : "text-slate-700"}`}>
                               {lowDiff < 0 ? (
                                 <ArrowDownRight className="h-3.5 w-3.5 text-rose-600" />
@@ -938,9 +961,19 @@ export default function SignalMonitoringCard() {
                         {/* SIGNAL DATE & HOLDING DURATION */}
                         <TableCell className="text-right font-mono text-[11px] py-2.5 px-3">
                           <div className="text-slate-700 font-medium">{signalDateStr}</div>
-                          <div className="text-[10px] text-slate-400 font-normal">
-                            Hold: <span className="font-semibold text-slate-600">{holdDays} hr</span>
-                          </div>
+                          {isPending ? (
+                            <div className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.2 mt-0.5">
+                              <Clock className="h-2.5 w-2.5" /> Antre Beli
+                            </div>
+                          ) : isUnfilled ? (
+                            <div className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-500 bg-slate-100 border border-slate-200 rounded px-1.5 py-0.2 mt-0.5" title="Order antrean beli tidak terjemput hingga batas waktu berakhir (PnL 0%)">
+                              <TimerOff className="h-2.5 w-2.5" /> Tidak Terjemput (0%)
+                            </div>
+                          ) : (
+                            <div className="text-[10px] text-slate-400 font-normal">
+                              Hold: <span className="font-semibold text-slate-600">{holdDays} hr</span>
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     );
