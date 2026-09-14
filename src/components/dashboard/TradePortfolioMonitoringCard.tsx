@@ -726,7 +726,7 @@ export default function TradePortfolioMonitoringCard() {
 
       {/* EOD ACTION BRIEFING ALERT BANNER (IF THERE ARE ACTIVE ALERTS) */}
       {openTrades.length > 0 && (cutAlerts.length > 0 || tpAlerts.length > 0 || addLotsAlerts.length > 0) && (
-        <div className="p-4 rounded-xl border bg-linear-to-r from-slate-900 to-slate-800 text-white shadow-md space-y-3">
+        <div className="p-4 rounded-xl border bg-gradient-to-r from-slate-900 to-slate-800 text-white shadow-md space-y-3">
           <div className="flex items-center justify-between border-b border-slate-700 pb-2">
             <div className="flex items-center gap-2">
               <div className="p-1.5 bg-amber-400/20 text-amber-300 rounded-md">
@@ -3373,6 +3373,149 @@ export default function TradePortfolioMonitoringCard() {
                       </div>
                     </div>
                   </div>
+
+                  {/* BOX ESTIMASI P&L */}
+                  {(() => {
+                    // Hitung P&L untuk setiap skenario
+                    const pnlTP1Lot1 = (tp1Price - entryPrice) * lotsTP1 * 100;
+                    const pnlTP2Lot2 = (tp2Price - entryPrice) * lotsTP2 * 100;
+                    const totalPnlFullTP = pnlTP1Lot1 + pnlTP2Lot2;
+                    const pnlSL = (stopLossPrice - entryPrice) * totalLots * 100;
+                    const pnlSLPct = entryPrice > 0 ? ((stopLossPrice - entryPrice) / entryPrice * 100).toFixed(1) : slPct;
+                    const totalPnlFullTPPct = entryPrice > 0 ? (totalPnlFullTP / totalCapital * 100).toFixed(1) : "0";
+                    const rrRatio = Math.abs(pnlSL) > 0 ? (totalPnlFullTP / Math.abs(pnlSL)).toFixed(2) : "∞";
+                    // Estimasi P&L skenario saat ini (unrealized)
+                    const currentPnlPct = pnlPercent;
+                    const breakpoints = [
+                      { label: "SL", pct: Number(slPct), color: "bg-rose-500" },
+                      { label: "Entry", pct: 0, color: "bg-slate-400" },
+                      { label: "TP1", pct: Number(tp1Pct), color: "bg-amber-400" },
+                      { label: "TP2", pct: Number(tp2Pct), color: "bg-emerald-500" },
+                    ];
+                    const rangeMin = Number(slPct) - 1;
+                    const rangeMax = Number(tp2Pct) + 1;
+                    const rangeSpan = rangeMax - rangeMin;
+                    const positionPct = Math.min(Math.max(Number(currentPnlPct), rangeMin), rangeMax);
+                    const posLeft = ((positionPct - rangeMin) / rangeSpan) * 100;
+
+                    return (
+                      <div className="p-3.5 bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-200 rounded-xl space-y-3 shadow-sm">
+                        {/* Header */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 font-black text-indigo-800 text-xs uppercase tracking-wider">
+                            <TrendingUp className="w-4 h-4 text-indigo-600" />
+                            <span>Estimasi P&amp;L (Proyeksi Skenario)</span>
+                          </div>
+                          <div className={`text-xs font-black px-2 py-0.5 rounded-full ${isProfit ? "bg-emerald-100 text-emerald-700" : "text-rose-700 bg-rose-100"}`}>
+                            {isProfit ? "+" : ""}{typeof currentPnlPct === "number" ? currentPnlPct.toFixed(2) : currentPnlPct}% Saat Ini
+                          </div>
+                        </div>
+
+                        {/* Visual Range Bar */}
+                        <div className="space-y-1.5">
+                          <div className="relative h-2.5 bg-gradient-to-r from-rose-300 via-slate-200 to-emerald-300 rounded-full overflow-visible">
+                            {/* Marker labels */}
+                            {breakpoints.map((bp) => {
+                              const bpLeft = ((bp.pct - rangeMin) / rangeSpan) * 100;
+                              return (
+                                <div
+                                  key={bp.label}
+                                  className="absolute -top-0.5 w-1 h-3 rounded-full bg-white/80 border border-slate-400"
+                                  style={{ left: `${Math.min(Math.max(bpLeft, 0), 100)}%`, transform: "translateX(-50%)" }}
+                                />
+                              );
+                            })}
+                            {/* Current price dot */}
+                            <div
+                              className={`absolute top-1/2 w-4 h-4 rounded-full border-2 border-white shadow-md -translate-y-1/2 -translate-x-1/2 transition-all ${isProfit ? "bg-emerald-500" : "bg-rose-500"}`}
+                              style={{ left: `${posLeft}%` }}
+                            />
+                          </div>
+                          {/* Labels below bar */}
+                          <div className="relative h-4">
+                            {breakpoints.map((bp) => {
+                              const bpLeft = ((bp.pct - rangeMin) / rangeSpan) * 100;
+                              return (
+                                <span
+                                  key={bp.label}
+                                  className="absolute text-[9px] font-bold text-slate-500 -translate-x-1/2"
+                                  style={{ left: `${Math.min(Math.max(bpLeft, 2), 98)}%` }}
+                                >
+                                  {bp.label}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Skenario Cards */}
+                        <div className={`grid gap-2 text-[11px] ${isHitSL ? "grid-cols-2" : "grid-cols-3"}`}>
+                          {/* Skenario SL */}
+                          <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl space-y-1">
+                            <div className="flex items-center gap-1 text-rose-700 font-bold text-[10px] uppercase">
+                              <span>🛑 Cut Loss</span>
+                            </div>
+                            <div className="font-black text-rose-600 text-sm">
+                              -{Math.abs(pnlSL).toLocaleString("id-ID")}
+                            </div>
+                            <div className="text-rose-500 text-[10px]">({pnlSLPct}%) • {totalLots} Lot</div>
+                            <div className="text-slate-500 text-[9.5px]">@ Rp {stopLossPrice.toLocaleString("id-ID")}</div>
+                          </div>
+
+                          {/* Skenario TP1 — hanya jika tidak hit SL */}
+                          {!isHitSL && (
+                            <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl space-y-1">
+                              <div className="flex items-center gap-1 text-amber-700 font-bold text-[10px] uppercase">
+                                <span>🎯 Realisasi TP1</span>
+                              </div>
+                              <div className="font-black text-amber-600 text-sm">
+                                +{pnlTP1Lot1.toLocaleString("id-ID")}
+                              </div>
+                              <div className="text-amber-500 text-[10px]">(+{tp1Pct}%) • {lotsTP1} Lot</div>
+                              <div className="text-slate-500 text-[9.5px]">@ Rp {tp1Price.toLocaleString("id-ID")}</div>
+                            </div>
+                          )}
+
+                          {/* Skenario Full TP1+TP2 — hanya jika tidak hit SL */}
+                          {!isHitSL && (
+                            <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1">
+                              <div className="flex items-center gap-1 text-emerald-700 font-bold text-[10px] uppercase">
+                                <span>💰 Full TP1+TP2</span>
+                              </div>
+                              <div className="font-black text-emerald-600 text-sm">
+                                +{totalPnlFullTP.toLocaleString("id-ID")}
+                              </div>
+                              <div className="text-emerald-500 text-[10px]">(+{totalPnlFullTPPct}%)</div>
+                              <div className="text-slate-500 text-[9.5px]">TP1 ({lotsTP1}L) + TP2 ({lotsTP2}L)</div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Ringkasan RR & Modal */}
+                        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-indigo-200 text-[10.5px]">
+                          <div className="text-center">
+                            <div className="text-slate-400 font-medium">Modal Dipakai</div>
+                            <div className="font-black text-slate-800">Rp {totalCapital.toLocaleString("id-ID")}</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-slate-400 font-medium">Maks. Risiko</div>
+                            <div className="font-black text-rose-600">-Rp {Math.abs(pnlSL).toLocaleString("id-ID")}</div>
+                          </div>
+                          {!isHitSL ? (
+                            <div className="text-center">
+                              <div className="text-slate-400 font-medium">Risk/Reward</div>
+                              <div className="font-black text-indigo-700">1 : {rrRatio}</div>
+                            </div>
+                          ) : (
+                            <div className="text-center">
+                              <div className="text-slate-400 font-medium">Kas Diselamatkan</div>
+                              <div className="font-black text-slate-700">Rp {(stopLossPrice * totalLots * 100).toLocaleString("id-ID")}</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* BOX 2: STEP-BY-STEP ROADMAP EKSEKUSI */}
                   <div className="space-y-2.5">
