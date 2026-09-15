@@ -194,30 +194,33 @@ export default function TradePortfolioMonitoringCard() {
     }
   }, []);
 
-  // Fresh Opportunities State
-  const [freshOpportunities, setFreshOpportunities] = useState<any[]>([]);
-  const [loadingFresh, setLoadingFresh] = useState(false);
+  // Smart Slot Assistant (Zen Mode) State
+  const [smartSlotData, setSmartSlotData] = useState<any>(null);
+  const [loadingSlotAssistant, setLoadingSlotAssistant] = useState(false);
+  const [isSlotAssistantRevealed, setIsSlotAssistantRevealed] = useState(false);
 
-  const fetchFreshOpportunities = useCallback(async () => {
+  const fetchSmartSlotSuggestions = useCallback(async () => {
     try {
-      setLoadingFresh(true);
-      const res = await api.get(`/api/portfolio/fresh-opportunities?limit=2&t=${Date.now()}`);
+      setLoadingSlotAssistant(true);
+      const res = await api.get(`/api/portfolio/smart-slot-suggestions?t=${Date.now()}`);
       if (res.data?.success) {
-        setFreshOpportunities(res.data.data || []);
+        setSmartSlotData(res.data.data);
+        setIsSlotAssistantRevealed(true);
       }
-    } catch (err) {
-      console.error("Gagal memuat rekomendasi fresh entry:", err);
+    } catch (err: any) {
+      console.error("Gagal menganalisis rekomendasi slot:", err);
+      showNotice("error", err?.response?.data?.message || "Gagal memuat rekomendasi slot.");
     } finally {
-      setLoadingFresh(false);
+      setLoadingSlotAssistant(false);
     }
   }, []);
 
-  const handleTakeFreshOpportunity = (opp: any) => {
+  const handleTakeSlotSuggestion = (sug: any) => {
     setManualForm({
-      ticker: opp.ticker,
-      strategyType: opp.strategyType === "RADAR_CALON_ARA_BELI_SORE" ? "BELI_SORE" : (opp.strategyType || "SWING"),
-      entryPrice: opp.currentPrice || opp.entryPrice,
-      lots: opp.recommendedLots || 1
+      ticker: sug.ticker,
+      strategyType: sug.strategyType,
+      entryPrice: sug.entryPrice,
+      lots: sug.recommendedLots || 1
     });
     setManualEntryOpen(true);
   };
@@ -226,8 +229,7 @@ export default function TradePortfolioMonitoringCard() {
     fetchOverview();
     fetchCandidateSignals();
     fetchHistory();
-    fetchFreshOpportunities();
-  }, [fetchOverview, fetchCandidateSignals, fetchHistory, fetchFreshOpportunities]);
+  }, [fetchOverview, fetchCandidateSignals, fetchHistory]);
 
   // Handler: Cash Management (Deposit / Withdraw / Direct Adjustment)
   const handleCashSubmit = async () => {
@@ -1592,129 +1594,174 @@ export default function TradePortfolioMonitoringCard() {
         </CardContent>
       </Card>
 
-      {/* SECTION 2.5: TOP 2 REKOMENDASI MASUK SEKARANG (FRESH ENTRY OPPORTUNITIES) */}
-      {freshOpportunities && freshOpportunities.length > 0 && (
-        <Card className="border-indigo-200 bg-linear-to-r from-indigo-50/60 via-purple-50/30 to-blue-50/60 shadow-xs overflow-hidden">
-          <CardHeader className="p-4 sm:p-5 border-b border-indigo-100 bg-white/70">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-indigo-600 text-white shadow-xs">
-                    <Sparkles className="w-4 h-4" />
-                  </div>
-                  <CardTitle className="text-base font-black text-slate-900">
-                    🎯 Top 2 Sinyal Paling Fresh (Valid di Area Beli Hari Ini)
-                  </CardTitle>
-                  <Badge className="bg-indigo-600 text-white font-bold text-xs">
-                    Pilihan Terbaik ({freshOpportunities.length})
-                  </Badge>
+      {/* SECTION 2.5: SMART PORTFOLIO SLOT ASSISTANT (ZEN MODE & ON-DEMAND) */}
+      <Card className="border-indigo-200 bg-linear-to-r from-indigo-50/70 via-purple-50/40 to-blue-50/70 shadow-xs overflow-hidden">
+        <CardHeader className="p-4 sm:p-5 border-b border-indigo-100 bg-white/80">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-indigo-600 text-white shadow-xs">
+                  <Sparkles className="w-4 h-4" />
                 </div>
-                <CardDescription className="text-xs text-slate-600 mt-1">
-                  Kandidat unggulan teratas yang harganya <strong>masih di area beli aman (&le; +2%)</strong>, belum terbang, dan memiliki Risk/Reward sehat.
-                </CardDescription>
+                <CardTitle className="text-base font-black text-slate-900">
+                  🧘 Asisten Pengisi Slot Portofolio (Zen Mode)
+                </CardTitle>
+                <Badge className={occupiedSlotsCount >= 3 ? "bg-emerald-600 text-white font-bold text-xs" : "bg-indigo-600 text-white font-bold text-xs"}>
+                  {occupiedSlotsCount >= 3 ? "Portofolio Penuh (3/3)" : `${3 - Math.min(3, occupiedSlotsCount)} Slot Kosong Tersedia`}
+                </Badge>
               </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={fetchFreshOpportunities}
-                disabled={loadingFresh}
-                className="h-8 text-xs font-bold border-indigo-200 hover:bg-indigo-50 text-indigo-700 cursor-pointer"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loadingFresh ? "animate-spin" : ""}`} />
-                Refresh Live Quote
-              </Button>
+              <CardDescription className="text-xs text-slate-600 mt-1">
+                Jaga ketenangan psikologi & hindari FOMO. Sistem hanya menganalisis dan memunculkan rekomendasi terbaik saat Anda membutuhkannya.
+              </CardDescription>
             </div>
-          </CardHeader>
 
-          <CardContent className="p-4 sm:p-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {freshOpportunities.map((opp: any, idx: number) => (
-                <div
-                  key={opp.signalId || opp.ticker}
-                  className="p-4 rounded-xl border border-indigo-200/80 bg-white shadow-xs hover:border-indigo-400 transition-all flex flex-col justify-between"
+            <div className="flex items-center gap-2">
+              {!isSlotAssistantRevealed ? (
+                <Button
+                  size="sm"
+                  onClick={fetchSmartSlotSuggestions}
+                  disabled={loadingSlotAssistant}
+                  className="h-8.5 px-4 bg-linear-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white text-xs font-black shadow-xs cursor-pointer flex items-center gap-1.5"
                 >
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="flex items-center justify-center w-5 h-5 rounded-full bg-indigo-100 text-indigo-800 text-xs font-black">
-                            #{idx + 1}
-                          </span>
-                          <Link
-                            href={`/ticker/${opp.ticker}`}
-                            className="text-xl font-black text-slate-900 hover:text-indigo-600 tracking-tight transition-colors"
-                          >
-                            {opp.ticker}
-                          </Link>
-                          <Badge className={opp.strategyType === "RADAR_CALON_ARA_BELI_SORE" ? "bg-purple-100 text-purple-800 border-purple-200 text-[10px]" : "bg-blue-100 text-blue-800 border-blue-200 text-[10px]"}>
-                            {opp.strategyType === "RADAR_CALON_ARA_BELI_SORE" ? "Beli Sore / ARA" : "SWING Breakout"}
-                          </Badge>
-                        </div>
-                        <p className="text-[11px] text-slate-500 font-medium mt-0.5">{opp.stockName}</p>
-                      </div>
+                  <Sparkles className={`w-3.5 h-3.5 ${loadingSlotAssistant ? "animate-spin" : "text-amber-300"}`} />
+                  <span>{loadingSlotAssistant ? "Menganalisis Slot..." : "⚡ Cek Rekomendasi Slot Kosong"}</span>
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={fetchSmartSlotSuggestions}
+                    disabled={loadingSlotAssistant}
+                    className="h-8 text-xs font-bold border-indigo-200 hover:bg-indigo-50 text-indigo-700 cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loadingSlotAssistant ? "animate-spin" : ""}`} />
+                    Refresh Analisis
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsSlotAssistantRevealed(false)}
+                    className="h-8 text-xs font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+                  >
+                    Tutup (Zen Mode)
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardHeader>
 
-                      <div className="text-right">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-xs font-black">
-                          Skor {opp.score} 🌟
-                        </span>
-                        <p className="text-[10px] font-bold text-slate-400 mt-0.5">
-                          RR: 1 : {opp.riskRewardRatio || 2.0}x
+        {isSlotAssistantRevealed && (
+          <CardContent className="p-4 sm:p-5 animate-in fade-in-50 duration-200">
+            {smartSlotData?.isPortfolioFull ? (
+              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="text-sm font-black text-emerald-950">Seluruh Slot Portofolio Telah Terisi Penuh (3/3)</h4>
+                  <p className="text-xs text-emerald-800 mt-1 leading-relaxed">
+                    Dana kas Anda sedang bekerja optimal pada posisi yang ada. Jaga disiplin psikologi, kawal trading plan, pasang trailing stop sesuai target, dan hindari membuka posisi baru secara berlebihan.
+                  </p>
+                </div>
+              </div>
+            ) : smartSlotData?.suggestions && smartSlotData.suggestions.length > 0 ? (
+              <div className="space-y-3">
+                <div className="p-2.5 rounded-lg bg-indigo-50/80 border border-indigo-100 text-xs text-indigo-900 font-medium flex items-center justify-between">
+                  <span>💡 {smartSlotData.message}</span>
+                  <span className="font-bold text-indigo-950">Sisa Kas RDN: Rp {account.currentCash.toLocaleString("id-ID")}</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {smartSlotData.suggestions.map((sug: any) => (
+                    <div
+                      key={sug.slotKey || sug.ticker}
+                      className="p-4 rounded-xl border border-indigo-200/90 bg-white shadow-xs hover:border-indigo-400 transition-all flex flex-col justify-between"
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
+                          <div>
+                            <span className="inline-flex items-center gap-1 text-[11px] font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200 mb-1">
+                              🎯 Khusus untuk: {sug.slotName}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <Link
+                                href={`/ticker/${sug.ticker}`}
+                                className="text-xl font-black text-slate-900 hover:text-indigo-600 tracking-tight transition-colors"
+                              >
+                                {sug.ticker}
+                              </Link>
+                              <Badge className={sug.strategyType === "BELI_SORE" ? "bg-purple-100 text-purple-800 border-purple-200 text-[10px]" : "bg-blue-100 text-blue-800 border-blue-200 text-[10px]"}>
+                                {sug.setupBadge || sug.strategyType}
+                              </Badge>
+                            </div>
+                            <p className="text-[11px] text-slate-500 font-medium">{sug.stockName}</p>
+                          </div>
+
+                          <div className="text-right">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-xs font-black">
+                              Skor {sug.score} 🌟
+                            </span>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1">
+                              RR: 1 : {sug.riskRewardRatio || 2.0}x
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Price & Target Metrics */}
+                        <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100 grid grid-cols-3 gap-2 text-center text-[11px]">
+                          <div>
+                            <span className="text-[10px] text-slate-400 block font-medium">Harga Masuk</span>
+                            <span className="font-bold text-slate-900">Rp {sug.entryPrice?.toLocaleString("id-ID")}</span>
+                            <span className="text-[10px] text-slate-500 font-semibold block">Area Beli</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-400 block font-medium">Stop Loss</span>
+                            <span className="font-bold text-rose-600">Rp {sug.stopLossPrice?.toLocaleString("id-ID")}</span>
+                            <span className="text-[10px] text-rose-600 font-semibold block">
+                              {sug.stopLossRiskPercent}% Cutloss
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-400 block font-medium">Target TP1</span>
+                            <span className="font-bold text-emerald-600">Rp {sug.targetPrice1?.toLocaleString("id-ID")}</span>
+                            <span className="text-[10px] text-emerald-600 font-semibold block">
+                              +{sug.targetGainPercent}% Cuan
+                            </span>
+                          </div>
+                        </div>
+
+                        <p className="text-[11px] text-slate-600 line-clamp-2 bg-indigo-50/40 p-2 rounded border border-indigo-100/40">
+                          💡 {sug.reason}
                         </p>
                       </div>
-                    </div>
 
-                    {/* Price Metrics Grid */}
-                    <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100 grid grid-cols-3 gap-2 text-center text-[11px]">
-                      <div>
-                        <span className="text-[10px] text-slate-400 block font-medium">Harga Live</span>
-                        <span className="font-bold text-slate-900">Rp {opp.currentPrice?.toLocaleString("id-ID")}</span>
-                        <span className={`text-[10px] font-semibold block ${opp.distancePct <= 0 ? "text-emerald-600" : "text-indigo-600"}`}>
-                          {opp.distancePct > 0 ? `+${opp.distancePct}%` : `${opp.distancePct}%`} vs Entry
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-slate-400 block font-medium">Stop Loss</span>
-                        <span className="font-bold text-rose-600">Rp {opp.stopLossPrice?.toLocaleString("id-ID")}</span>
-                        <span className="text-[10px] text-slate-400 block">
-                          -{Math.abs(Math.round(((opp.currentPrice - opp.stopLossPrice) / opp.currentPrice) * 100))}% Cutloss
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-slate-400 block font-medium">Target TP1</span>
-                        <span className="font-bold text-emerald-600">Rp {opp.targetPrice1?.toLocaleString("id-ID")}</span>
-                        <span className="text-[10px] text-emerald-600 font-semibold block">
-                          +{Math.round(((opp.targetPrice1 - opp.currentPrice) / opp.currentPrice) * 100)}% Cuan
-                        </span>
+                      <div className="pt-3 mt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                        <div className="text-[11px]">
+                          <span className="text-slate-400">Porsi Slot: </span>
+                          <strong className="text-slate-700">{sug.recommendedLots} Lot</strong>
+                          <span className="text-slate-400"> (~Rp {(sug.estimatedCapitalUsed || sug.recommendedLots * sug.entryPrice * 100)?.toLocaleString("id-ID")})</span>
+                        </div>
+
+                        <Button
+                          size="sm"
+                          onClick={() => handleTakeSlotSuggestion(sug)}
+                          className="h-8 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs cursor-pointer"
+                        >
+                          + Ambil Saham (Isi Slot)
+                        </Button>
                       </div>
                     </div>
-
-                    <p className="text-[11px] text-slate-600 line-clamp-2 bg-indigo-50/50 p-2 rounded border border-indigo-100/50">
-                      💡 {opp.reason}
-                    </p>
-                  </div>
-
-                  <div className="pt-3 mt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-                    <div className="text-[11px]">
-                      <span className="text-slate-400">Saran: </span>
-                      <strong className="text-slate-700">{opp.recommendedLots} Lot</strong>
-                      <span className="text-slate-400"> (~Rp {(opp.estimatedCapitalUsed || opp.recommendedLots * opp.currentPrice * 100)?.toLocaleString("id-ID")})</span>
-                    </div>
-
-                    <Button
-                      size="sm"
-                      onClick={() => handleTakeFreshOpportunity(opp)}
-                      className="h-8 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs cursor-pointer"
-                    >
-                      + Ambil Sinyal (Isi Slot)
-                    </Button>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center text-xs text-slate-600">
+                Belum ada kandidat yang memenuhi kriteria ketat saat ini. Silakan lakukan scan ulang menjelang penutupan sesi bursa.
+              </div>
+            )}
           </CardContent>
-        </Card>
-      )}
+        )}
+      </Card>
 
       {/* SECTION 3: TABS (POSISI AKTIF, EXECUTION PLANNER, JURNAL TRADING) */}
       <div className="space-y-4">
