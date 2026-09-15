@@ -1695,6 +1695,22 @@ export default function TradePortfolioMonitoringCard() {
                               </Badge>
                             </div>
                             <p className="text-[11px] text-slate-500 font-medium">{sug.stockName}</p>
+                            
+                            {/* Smart Money & Safe Entry Tag Badges */}
+                            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                              {sug.smartMoneyStatus && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded border border-emerald-300">
+                                  <Coins className="w-3 h-3 text-emerald-600" />
+                                  {sug.smartMoneyStatus}
+                                </span>
+                              )}
+                              {sug.entrySafetyBadge && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-800 bg-blue-100/80 px-2 py-0.5 rounded border border-blue-300">
+                                  <ShieldAlert className="w-3 h-3 text-blue-600" />
+                                  {sug.entrySafetyBadge}
+                                </span>
+                              )}
+                            </div>
                           </div>
 
                           <div className="text-right">
@@ -1712,7 +1728,9 @@ export default function TradePortfolioMonitoringCard() {
                           <div>
                             <span className="text-[10px] text-slate-400 block font-medium">Harga Masuk</span>
                             <span className="font-bold text-slate-900">Rp {sug.entryPrice?.toLocaleString("id-ID")}</span>
-                            <span className="text-[10px] text-slate-500 font-semibold block">Area Beli</span>
+                            <span className="text-[10px] text-emerald-600 font-bold block">
+                              {sug.entrySafetyBadge ? "Zona Aman" : "Area Beli"}
+                            </span>
                           </div>
                           <div>
                             <span className="text-[10px] text-slate-400 block font-medium">Stop Loss</span>
