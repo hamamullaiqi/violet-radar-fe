@@ -207,7 +207,7 @@ export default function AraPotentialCard() {
 
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
                 <Clock className="w-3 h-3 text-slate-400" />
-                Pre-Closing: 15:40 – 15:50 WIB
+                Sesi Beli Sore: 15:30 – 15:50 WIB
               </span>
 
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -245,7 +245,7 @@ export default function AraPotentialCard() {
                   <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-900 font-medium">
                     🎯 <b>Kuota Disiplin (Hanya 1 Beli Sore Terbaik per hari):</b>
                     <ul className="list-disc pl-4 mt-1 space-y-1 text-[11px]">
-                      <li><b>1 Beli Sore Terbaik (Calon ARA)</b>: Saham prioritas tertinggi dengan skor akumulasi & kekuatan penutupan terkuat, siap dieksekusi pada sesi <i>pre-closing</i> (15:40 – 15:50 WIB).</li>
+                      <li><b>1 Beli Sore Terbaik (Calon ARA)</b>: Saham prioritas tertinggi dengan skor akumulasi & kekuatan penutupan terkuat, siap dieksekusi pada sesi <i>beli sore</i> (15:30 – 15:50 WIB).</li>
                       <li><b>Fokus Penuh</b>: Seluruh alokasi Beli Sore difokuskan langsung pada 1 saham terbaik berpeluang paling tinggi menuju ARA atau gap up esok pagi.</li>
                     </ul>
                   </div>
@@ -352,7 +352,7 @@ export default function AraPotentialCard() {
               Top 1 Beli Sore ({displayedSignals.length} emiten {statusFilter === "ACTIVE" ? "aktif" : ""})
             </span>
             <span className="text-[11px] text-slate-400 hidden sm:inline">
-              Fokus kandidat terbaik pre-closing 15:40 WIB (Rp 90 – Rp 2.500)
+              Fokus kandidat terbaik sesi sore 15:30 WIB (Rp 90 – Rp 2.500)
             </span>
           </div>
 

@@ -217,7 +217,7 @@ export default function FractionBreakoutCard() {
                     </ul>
                   </div>
                   <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-[11px]">
-                    🎯 <b>Rencana Eksekusi:</b> Beli sore di zona akumulasi (15:40–15:50 WIB), pasang SL disiplin (-3.5% s.d. -4.0%), dan trailing take profit saat lonjakan pagi menembus benteng.
+                    🎯 <b>Rencana Eksekusi:</b> Beli sore di zona akumulasi (15:30–15:50 WIB), pasang SL disiplin (-3.5% s.d. -4.0%), dan trailing take profit saat lonjakan pagi menembus benteng.
                   </div>
                 </div>
               </DialogContent>
