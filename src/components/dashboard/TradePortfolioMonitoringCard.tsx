@@ -27,7 +27,13 @@ import {
   Sparkles,
   PieChart,
   Compass,
-  MapPin
+  MapPin,
+  Upload,
+  FileSpreadsheet,
+  Trash2,
+  HelpCircle,
+  CheckCircle,
+  FileUp
 } from "lucide-react";
 import {
   Card,
@@ -116,6 +122,22 @@ export default function TradePortfolioMonitoringCard() {
   // Strategy Roadmap & Recommendation Modal States
   const [strategyRoadmapOpen, setStrategyRoadmapOpen] = useState(false);
   const [selectedTradeForRoadmap, setSelectedTradeForRoadmap] = useState<any>(null);
+
+  // CSV Import States
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [clearHistoryModalOpen, setClearHistoryModalOpen] = useState(false);
+  const [importFileName, setImportFileName] = useState<string>("");
+  const [importTradesPreview, setImportTradesPreview] = useState<any[]>([]);
+  const [importPreviewSummary, setImportPreviewSummary] = useState<{
+    count: number;
+    winRate: number;
+    totalPnL: number;
+    winCount: number;
+    lossCount: number;
+  } | null>(null);
+  const [clearExistingHistory, setClearExistingHistory] = useState<boolean>(false);
+  const [importLoading, setImportLoading] = useState(false);
+  const [parseError, setParseError] = useState<string | null>(null);
 
   const openStrategyRoadmap = (trade: any) => {
     setSelectedTradeForRoadmap(trade);
@@ -579,6 +601,240 @@ export default function TradePortfolioMonitoringCard() {
     link.click();
     document.body.removeChild(link);
     showNotice("success", "File CSV jurnal berhasil diunduh.");
+  };
+
+  // Download Sample Template CSV
+  const handleDownloadTemplate = () => {
+    const csvContent =
+      "No;Strategi;Ticker;Tanggal Masuk;Tanggal Keluar;Durasi (Hari);Harga Beli;Harga Jual;Jumlah Lot;Modal Terpakai (Rp);PnL (Rp);PnL (%);Status;Catatan\n" +
+      "1;Beli Sore;MPXL;09/05/2025;14/05/2025;5;125;128;400;5000000;120000;2.40;HIT_TP1;Hit Target 1 Beli Sore\n" +
+      "2;Beli Sore;DKFT;14/05/2025;15/05/2025;1;396;420;127;5029200;304800;6.06;HIT_TP2;Full TP2 Pagi Hari\n" +
+      "3;SWING;ANTM;21/05/2025;22/05/2025;1;2910;3080;18;5238000;306000;5.84;HIT_TP2;Breakout Area Resistance\n" +
+      "4;Beli Sore;KRYA;08/05/2025;22/05/2025;14;169;163;295;4985500;-177000;-3.55;HIT_SL;Disiplin Stop Loss Support Jebol\n";
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "template_riwayat_trading_violet_radar.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showNotice("success", "Template CSV berhasil diunduh.");
+  };
+
+  // Parse CSV File for Import
+  const handleCSVFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportFileName(file.name);
+    setParseError(null);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        if (!text || text.trim().length === 0) {
+          setParseError("File CSV kosong.");
+          return;
+        }
+
+        const lines = text.split(/\r\n|\n|\r/).filter((line) => line.trim().length > 0);
+        if (lines.length < 2) {
+          setParseError("File CSV harus memiliki baris judul kolom (header) dan minimal 1 baris data.");
+          return;
+        }
+
+        // Detect delimiter (semicolon, comma, tab)
+        const headerLine = lines[0];
+        let delimiter = ",";
+        if (headerLine.includes(";")) delimiter = ";";
+        else if (headerLine.includes("\t")) delimiter = "\t";
+
+        const parseCSVLine = (line: string, delim: string): string[] => {
+          const result: string[] = [];
+          let cur = "";
+          let inQuotes = false;
+          for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"' || char === "'") {
+              inQuotes = !inQuotes;
+            } else if (char === delim && !inQuotes) {
+              result.push(cur.trim());
+              cur = "";
+            } else {
+              cur += char;
+            }
+          }
+          result.push(cur.trim());
+          return result;
+        };
+
+        const rawHeaders = parseCSVLine(headerLine, delimiter).map((h) =>
+          h.toLowerCase().replace(/["']/g, "").trim()
+        );
+
+        // Map column indices
+        const findCol = (candidates: string[]) => {
+          return rawHeaders.findIndex((h) => candidates.some((c) => h.includes(c)));
+        };
+
+        const tickerIdx = findCol(["ticker", "kode", "saham", "symbol"]);
+        const stratIdx = findCol(["strategi", "strategy", "tipe"]);
+        const entryDateIdx = findCol(["tanggal masuk", "tgl masuk", "tgl beli", "tanggal beli", "entry date", "buy date"]);
+        const exitDateIdx = findCol(["tanggal keluar", "tgl keluar", "tgl jual", "tanggal jual", "exit date", "sell date"]);
+        const durIdx = findCol(["durasi", "hari", "holding"]);
+        const entryPriceIdx = findCol(["harga beli", "harga masuk", "entry price", "buy price", "harga"]);
+        const exitPriceIdx = findCol(["harga jual", "harga keluar", "exit price", "sell price"]);
+        const lotsIdx = findCol(["jumlah lot", "lot", "lots", "qty"]);
+        const capitalIdx = findCol(["modal", "capital"]);
+        const pnlRpIdx = findCol(["pnl (rp)", "pnl rp", "realized pnl", "profit (rp)", "untung"]);
+        const pnlPctIdx = findCol(["pnl (%)", "pnl %", "roi", "return"]);
+        const statusIdx = findCol(["status", "alasan", "exit reason", "reason"]);
+        const noteIdx = findCol(["catatan", "note", "keterangan"]);
+
+        if (tickerIdx === -1) {
+          setParseError("Kolom Ticker / Kode Saham tidak ditemukan di header CSV.");
+          return;
+        }
+
+        const parseNum = (val: string): number => {
+          if (!val) return 0;
+          let clean = val.replace(/["'Rp\s]/gi, "").trim();
+          // Handle Indonesian format: 1.234,56 or 0,024
+          if (clean.includes(",") && !clean.includes(".")) {
+            clean = clean.replace(",", ".");
+          } else if (clean.includes(".") && clean.includes(",")) {
+            clean = clean.replace(/\./g, "").replace(",", ".");
+          }
+          const n = parseFloat(clean);
+          return isNaN(n) ? 0 : n;
+        };
+
+        const parsedTrades: any[] = [];
+        let totalPnL = 0;
+        let winCount = 0;
+        let lossCount = 0;
+
+        for (let i = 1; i < lines.length; i++) {
+          const row = parseCSVLine(lines[i], delimiter);
+          if (row.length <= 1 && !row[0]) continue;
+
+          const ticker = (row[tickerIdx] || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+          if (!ticker) continue;
+
+          const strategyRaw = stratIdx !== -1 ? row[stratIdx] : "SWING";
+          const entryDateRaw = entryDateIdx !== -1 ? row[entryDateIdx] : new Date().toISOString();
+          const exitDateRaw = exitDateIdx !== -1 ? row[exitDateIdx] : entryDateRaw;
+
+          const entryPrice = entryPriceIdx !== -1 ? parseNum(row[entryPriceIdx]) : 1000;
+          const exitPrice = exitPriceIdx !== -1 ? parseNum(row[exitPriceIdx]) : entryPrice;
+          const lots = lotsIdx !== -1 ? Math.max(1, Math.round(parseNum(row[lotsIdx]))) : 1;
+          const totalCapital = capitalIdx !== -1 ? parseNum(row[capitalIdx]) : entryPrice * lots * 100;
+          const dur = durIdx !== -1 ? parseNum(row[durIdx]) : 1;
+
+          let pnlRp = pnlRpIdx !== -1 ? parseNum(row[pnlRpIdx]) : (exitPrice - entryPrice) * lots * 100;
+          let pnlPct = pnlPctIdx !== -1 ? parseNum(row[pnlPctIdx]) : (entryPrice > 0 ? ((exitPrice - entryPrice) / entryPrice) * 100 : 0);
+
+          // Normalize percentage if given in decimal like 0.024 (2.4%)
+          if (Math.abs(pnlPct) < 0.5 && Math.abs(pnlRp) > 1000) {
+            pnlPct = pnlPct * 100;
+          }
+          pnlPct = Number(pnlPct.toFixed(2));
+
+          const status = statusIdx !== -1 && row[statusIdx] ? row[statusIdx] : (pnlRp >= 0 ? "HIT_TP1" : "HIT_SL");
+          const note = noteIdx !== -1 ? row[noteIdx] : "";
+
+          if (pnlRp > 0) winCount++;
+          else if (pnlRp < 0) lossCount++;
+          totalPnL += pnlRp;
+
+          parsedTrades.push({
+            ticker,
+            strategyType: strategyRaw,
+            entryDate: entryDateRaw,
+            exitDate: exitDateRaw,
+            entryPrice,
+            exitPrice,
+            lots,
+            totalCapitalUsed: totalCapital,
+            holdingDays: dur || 1,
+            realizedPnLRupiah: pnlRp,
+            realizedPnLPercent: pnlPct,
+            exitReason: status,
+            exitNote: note
+          });
+        }
+
+        if (parsedTrades.length === 0) {
+          setParseError("Tidak ada data transaksi valid yang berhasil dibaca dari CSV.");
+          return;
+        }
+
+        const winRate = Number(((winCount / parsedTrades.length) * 100).toFixed(1));
+
+        setImportTradesPreview(parsedTrades);
+        setImportPreviewSummary({
+          count: parsedTrades.length,
+          winRate,
+          totalPnL,
+          winCount,
+          lossCount
+        });
+      } catch (err: any) {
+        console.error("Error parsing CSV:", err);
+        setParseError(`Gagal membaca file CSV: ${err.message}`);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // Execute Import
+  const handleExecuteImport = async () => {
+    if (!importTradesPreview || importTradesPreview.length === 0) {
+      showNotice("error", "Tidak ada data riwayat yang siap diimpor.");
+      return;
+    }
+    try {
+      setImportLoading(true);
+      const res = await api.post("/api/portfolio/import-history", {
+        trades: importTradesPreview,
+        clearExisting: clearExistingHistory
+      });
+      if (res.data?.success) {
+        showNotice("success", res.data.message || `Berhasil mengimpor ${importTradesPreview.length} transaksi!`);
+        setImportModalOpen(false);
+        setImportTradesPreview([]);
+        setImportPreviewSummary(null);
+        setImportFileName("");
+        fetchHistory(1);
+        fetchOverview();
+      }
+    } catch (err: any) {
+      console.error("Gagal import riwayat:", err);
+      showNotice("error", err?.response?.data?.message || "Gagal mengimpor file CSV riwayat.");
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  // Clear all history
+  const handleClearAllHistory = async () => {
+    try {
+      setImportLoading(true);
+      const res = await api.delete("/api/portfolio/history/clear");
+      if (res.data?.success) {
+        showNotice("success", res.data.message || "Riwayat transaksi selesai berhasil dikosongkan.");
+        setClearHistoryModalOpen(false);
+        fetchHistory(1);
+        fetchOverview();
+      }
+    } catch (err: any) {
+      console.error("Gagal menghapus riwayat:", err);
+      showNotice("error", err?.response?.data?.message || "Gagal menghapus riwayat.");
+    } finally {
+      setImportLoading(false);
+    }
   };
 
   const account = data?.account || { initialCapital: 0, currentCash: 0, totalDeposited: 0 };
@@ -2237,23 +2493,62 @@ export default function TradePortfolioMonitoringCard() {
         {/* TAB 3: JURNAL RIWAYAT TRADE (CLOSED TRADES) */}
         {activeTab === "JOURNAL" && (
           <Card className="border-slate-200 bg-white shadow-xs">
-            <CardHeader className="p-4 border-b border-slate-100 flex flex-row items-center justify-between">
+            <CardHeader className="p-4 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
-                <CardTitle className="text-base font-bold text-slate-900">
-                  Buku Jurnal Riwayat Transaksi Selesai
+                <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <span>Buku Jurnal Riwayat Transaksi Selesai</span>
+                  <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-200 text-[10px] font-bold">
+                    {historyPagination.total} Total Transaksi
+                  </Badge>
                 </CardTitle>
                 <CardDescription className="text-xs text-slate-500">
                   Semua transaksi yang sudah ditutup beserta alasan exit (TP, SL, Expired, Emergency Cut).
                 </CardDescription>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleExportCSV}
-                className="h-8 text-xs border-slate-300 text-slate-700 font-semibold"
-              >
-                <Download className="w-3.5 h-3.5 mr-1.5" /> Download CSV
-              </Button>
+              <div className="flex items-center flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setImportTradesPreview([]);
+                    setImportPreviewSummary(null);
+                    setImportFileName("");
+                    setParseError(null);
+                    setImportModalOpen(true);
+                  }}
+                  className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-xs cursor-pointer"
+                >
+                  <Upload className="w-3.5 h-3.5 mr-1.5" /> Import CSV Riwayat
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleDownloadTemplate}
+                  className="h-8 text-xs border-slate-300 text-slate-700 font-semibold hover:bg-slate-50"
+                  title="Unduh format template CSV"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5 text-emerald-600" /> Template CSV
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleExportCSV}
+                  className="h-8 text-xs border-slate-300 text-slate-700 font-semibold hover:bg-slate-50"
+                  title="Unduh seluruh riwayat sebagai file CSV"
+                >
+                  <Download className="w-3.5 h-3.5 mr-1.5" /> Export CSV
+                </Button>
+                {historyTrades.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setClearHistoryModalOpen(true)}
+                    className="h-8 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 font-medium"
+                    title="Kosongkan riwayat"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               {historyTrades.length === 0 ? (
@@ -3964,6 +4259,230 @@ export default function TradePortfolioMonitoringCard() {
               </>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL 8: IMPORT CSV RIWAYAT TRADING */}
+      <Dialog open={importModalOpen} onOpenChange={setImportModalOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <Upload className="w-5 h-5 text-emerald-600" />
+              Import Riwayat Trading (File CSV)
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Unggah file catatan trading masa lalu Anda. Sistem otomatis memetakan kolom Ticker, Tanggal Beli/Jual, Lot, Harga, dan PnL.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Upload Box */}
+            <div className="border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-xl p-6 text-center transition-colors bg-slate-50/50 relative">
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                onChange={handleCSVFileSelect}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+              <div className="flex flex-col items-center gap-2">
+                <div className="p-3 bg-emerald-50 text-emerald-600 rounded-full">
+                  <FileUp className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-800">
+                    {importFileName ? importFileName : "Klik atau seret (drag & drop) file CSV ke sini"}
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Mendukung pemisah titik-koma (;) atau koma (,) serta format angka Indonesia
+                  </p>
+                </div>
+                {!importFileName && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-1 h-7 text-[11px] border-slate-300 pointer-events-none"
+                  >
+                    Pilih File CSV
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Error Message if any */}
+            {parseError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">Format CSV tidak sesuai: </span>
+                  <span>{parseError}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Preview Summary */}
+            {importPreviewSummary && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="p-3 bg-slate-100 rounded-xl text-center border border-slate-200">
+                    <div className="text-[10px] text-slate-500 font-bold uppercase">Total Transaksi</div>
+                    <div className="text-lg font-black text-slate-900">{importPreviewSummary.count}</div>
+                    <div className="text-[10px] text-slate-400">Baris terbaca</div>
+                  </div>
+                  <div className="p-3 bg-emerald-50 rounded-xl text-center border border-emerald-200">
+                    <div className="text-[10px] text-emerald-700 font-bold uppercase">Win Rate</div>
+                    <div className="text-lg font-black text-emerald-700">{importPreviewSummary.winRate}%</div>
+                    <div className="text-[10px] text-emerald-600 font-medium">
+                      {importPreviewSummary.winCount} W / {importPreviewSummary.lossCount} L
+                    </div>
+                  </div>
+                  <div className={`p-3 rounded-xl text-center border ${importPreviewSummary.totalPnL >= 0 ? "bg-emerald-50 border-emerald-200" : "bg-rose-50 border-rose-200"}`}>
+                    <div className="text-[10px] text-slate-500 font-bold uppercase">Total Realized PnL</div>
+                    <div className={`text-base font-black ${importPreviewSummary.totalPnL >= 0 ? "text-emerald-700" : "text-rose-600"}`}>
+                      {importPreviewSummary.totalPnL >= 0 ? "+" : ""}Rp {importPreviewSummary.totalPnL.toLocaleString("id-ID")}
+                    </div>
+                    <div className="text-[10px] text-slate-400">Kumulatif profit/loss</div>
+                  </div>
+                </div>
+
+                {/* Table Preview 5 sample rows */}
+                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                  <div className="bg-slate-100 px-3 py-1.5 text-[11px] font-bold text-slate-700 flex justify-between items-center">
+                    <span>Pratinjau Data (5 Baris Pertama)</span>
+                    <span className="text-[10px] font-normal text-slate-500">Total {importTradesPreview.length} data siap diimpor</span>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto">
+                    <table className="w-full text-[11px]">
+                      <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+                        <tr>
+                          <th className="p-1.5 text-left font-bold">Ticker</th>
+                          <th className="p-1.5 text-left font-bold">Strategi</th>
+                          <th className="p-1.5 text-right font-bold">Beli</th>
+                          <th className="p-1.5 text-right font-bold">Jual</th>
+                          <th className="p-1.5 text-right font-bold">Lot</th>
+                          <th className="p-1.5 text-right font-bold">PnL (Rp)</th>
+                          <th className="p-1.5 text-center font-bold">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {importTradesPreview.slice(0, 5).map((row: any, idx: number) => {
+                          const isWin = (row.realizedPnLRupiah || 0) >= 0;
+                          return (
+                            <tr key={idx} className="hover:bg-slate-50/80">
+                              <td className="p-1.5 font-bold text-slate-900">{row.ticker}</td>
+                              <td className="p-1.5 text-slate-600">{row.strategyType}</td>
+                              <td className="p-1.5 text-right text-slate-700">Rp {row.entryPrice?.toLocaleString("id-ID")}</td>
+                              <td className="p-1.5 text-right text-slate-900 font-medium">Rp {row.exitPrice?.toLocaleString("id-ID")}</td>
+                              <td className="p-1.5 text-right font-bold text-slate-800">{row.lots}</td>
+                              <td className={`p-1.5 text-right font-bold ${isWin ? "text-emerald-600" : "text-rose-600"}`}>
+                                {isWin ? "+" : ""}Rp {row.realizedPnLRupiah?.toLocaleString("id-ID")}
+                              </td>
+                              <td className="p-1.5 text-center">
+                                <span className={`px-1.5 py-0.5 rounded text-[9.5px] font-bold ${isWin ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}>
+                                  {row.exitReason || (isWin ? "TP" : "SL")}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Replace vs Append Option */}
+                <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-lg flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <label htmlFor="clearExisting" className="text-xs font-bold text-amber-900 cursor-pointer">
+                      Timpa Riwayat Lama (Ganti Total)
+                    </label>
+                    <p className="text-[10.5px] text-amber-700">
+                      Jika dicentang, riwayat selesai yang sudah ada sebelumnya akan dihapus dan digantikan dengan file ini.
+                    </p>
+                  </div>
+                  <input
+                    id="clearExisting"
+                    type="checkbox"
+                    checked={clearExistingHistory}
+                    onChange={(e) => setClearExistingHistory(e.target.checked)}
+                    className="w-4 h-4 text-emerald-600 rounded border-amber-300 focus:ring-emerald-500 cursor-pointer"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="border-t border-slate-100 pt-3 flex flex-col sm:flex-row gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setImportModalOpen(false);
+                setImportTradesPreview([]);
+                setImportPreviewSummary(null);
+                setImportFileName("");
+                setParseError(null);
+              }}
+              className="text-xs h-8 text-slate-600"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              onClick={handleExecuteImport}
+              disabled={!importTradesPreview || importTradesPreview.length === 0 || importLoading}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 shadow-xs cursor-pointer gap-1.5 disabled:opacity-50"
+            >
+              {importLoading ? (
+                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <CheckCircle className="w-3.5 h-3.5" />
+              )}
+              <span>
+                {importLoading
+                  ? "Sedang Mengimpor..."
+                  : `Konfirmasi & Simpan (${importTradesPreview.length} Transaksi)`}
+              </span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL 9: KONFIRMASI HAPUS RIWAYAT */}
+      <Dialog open={clearHistoryModalOpen} onOpenChange={setClearHistoryModalOpen}>
+        <DialogContent className="sm:max-w-md bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-rose-600 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-rose-600" />
+              Kosongkan Semua Riwayat Selesai?
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Tindakan ini akan menghapus seluruh catatan transaksi selesai (CLOSED trades) di jurnal akun Anda. Posisi yang sedang aktif (OPEN) tidak akan terpengaruh.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700">
+            ⚠️ <strong>Perhatian:</strong> Data yang sudah dihapus tidak dapat dikembalikan kecuali Anda melakukan import CSV ulang.
+          </div>
+
+          <DialogFooter className="border-t border-slate-100 pt-3 flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setClearHistoryModalOpen(false)}
+              className="text-xs h-8 text-slate-600 flex-1"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              onClick={handleClearAllHistory}
+              disabled={importLoading}
+              className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs h-8 shadow-xs flex-1"
+            >
+              {importLoading ? "Menghapus..." : "Ya, Hapus Semua Riwayat"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
