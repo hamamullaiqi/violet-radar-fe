@@ -46,6 +46,7 @@ export interface KeyLevelsProps {
   support2?: number;
   resistance1?: number;
   resistance2?: number;
+  bottomPrice?: number;
   pivot?: number;
   high52Week?: number;
   low52Week?: number;
@@ -66,6 +67,8 @@ export interface VioletLightweightChartProps {
   keyLevels?: KeyLevelsProps;
   tradingPlan?: TradingPlanProps;
   bandarAvgPrice?: number;
+  bottomPrice?: number;
+  bottomDetection?: any;
   recentSignals?: Array<{
     date?: string | Date;
     signalType?: string;
@@ -84,6 +87,8 @@ export default function VioletLightweightChart({
   keyLevels,
   tradingPlan,
   bandarAvgPrice: propBandarAvg,
+  bottomPrice: propBottomPrice,
+  bottomDetection,
   recentSignals,
 }: VioletLightweightChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -94,6 +99,7 @@ export default function VioletLightweightChart({
   const [subIndicator, setSubIndicator] = useState<SubIndicatorType>("volume");
   const [showMa, setShowMa] = useState<boolean>(true);
   const [showBandarCost, setShowBandarCost] = useState<boolean>(true);
+  const [showBottomFloor, setShowBottomFloor] = useState<boolean>(true);
   const [showKeyLevels, setShowKeyLevels] = useState<boolean>(true);
   const [showTradingPlan, setShowTradingPlan] = useState<boolean>(true);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
@@ -562,7 +568,20 @@ export default function VioletLightweightChart({
       }
     }
 
-    // 7. Signal Markers
+    // 7. Bottom Floor Level (Lantai Dasar & Support Struktural Bawah)
+    const activeBottomPrice = propBottomPrice || keyLevels?.bottomPrice || bottomDetection?.bottomPrice;
+    if (showBottomFloor && activeBottomPrice) {
+      candleSeries.createPriceLine({
+        price: activeBottomPrice,
+        color: "#0891b2", // Cyan 600
+        lineWidth: 2,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: `Bottom Floor: ${activeBottomPrice}`,
+      });
+    }
+
+    // 8. Signal Markers
     if (recentSignals && recentSignals.length > 0) {
       const markers: any[] = [];
       recentSignals.forEach((sig) => {
@@ -789,6 +808,22 @@ export default function VioletLightweightChart({
             <Layers className="w-3 h-3 text-emerald-600" />
             <span>S/R Levels</span>
           </button>
+
+          {/* Toggle Bottom Floor */}
+          {(propBottomPrice || keyLevels?.bottomPrice || bottomDetection?.bottomPrice) && (
+            <button
+              type="button"
+              onClick={() => setShowBottomFloor(!showBottomFloor)}
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer ${
+                showBottomFloor
+                  ? "border-cyan-300 bg-cyan-50 text-cyan-800 font-semibold"
+                  : "border-slate-200 bg-white text-slate-500"
+              }`}
+            >
+              <Target className="w-3 h-3 text-cyan-600" />
+              <span>Bottom Floor</span>
+            </button>
+          )}
 
           {/* Toggle Trading Plan */}
           {tradingPlan && (

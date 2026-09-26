@@ -12,6 +12,8 @@ interface TickerChartProps {
   ticker: string;
   currentPrice?: number;
   bandarAvgPrice?: number;
+  bottomPrice?: number;
+  bottomDetection?: any;
   keyLevels?: KeyLevelsProps;
   tradingPlan?: TradingPlanProps;
   recentSignals?: Array<{
@@ -29,6 +31,8 @@ export default function TickerChart({
   ticker,
   currentPrice,
   bandarAvgPrice,
+  bottomPrice,
+  bottomDetection,
   keyLevels,
   tradingPlan,
   recentSignals,
@@ -71,7 +75,7 @@ export default function TickerChart({
           {activeEngine === "violet" ? (
             <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              Overlay Bandar Cost & Trading Plan Aktif
+              Overlay Bandar Cost, Bottom Floor & Trading Plan Aktif
             </span>
           ) : (
             <span className="text-[11px] font-medium text-slate-500">
@@ -87,6 +91,8 @@ export default function TickerChart({
           ticker={ticker}
           currentPrice={currentPrice}
           bandarAvgPrice={bandarAvgPrice}
+          bottomPrice={bottomPrice}
+          bottomDetection={bottomDetection}
           keyLevels={keyLevels}
           tradingPlan={tradingPlan}
           recentSignals={recentSignals}
@@ -96,6 +102,8 @@ export default function TickerChart({
           symbol={ticker}
           currentPrice={currentPrice}
           bandarAvgPrice={bandarAvgPrice}
+          bottomPrice={bottomPrice}
+          bottomDetection={bottomDetection}
           keyLevels={keyLevels}
           tradingPlan={tradingPlan}
         />

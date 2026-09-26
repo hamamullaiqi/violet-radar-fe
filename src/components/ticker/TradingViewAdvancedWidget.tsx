@@ -8,11 +8,14 @@ interface TradingViewAdvancedWidgetProps {
   symbol: string;
   currentPrice?: number;
   bandarAvgPrice?: number;
+  bottomPrice?: number;
+  bottomDetection?: any;
   keyLevels?: {
     support1?: number;
     support2?: number;
     resistance1?: number;
     resistance2?: number;
+    bottomPrice?: number;
     pivot?: number;
   };
   tradingPlan?: {
@@ -28,10 +31,13 @@ function TradingViewAdvancedWidgetComponent({
   symbol,
   currentPrice,
   bandarAvgPrice,
+  bottomPrice: propBottomPrice,
+  bottomDetection,
   keyLevels,
   tradingPlan,
 }: TradingViewAdvancedWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const activeBottom = propBottomPrice || keyLevels?.bottomPrice || bottomDetection?.bottomPrice;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -113,6 +119,13 @@ function TradingViewAdvancedWidgetComponent({
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-cyan-50 border border-cyan-200 text-cyan-800 font-semibold text-[11px]">
               <ShieldCheck className="w-3 h-3 text-cyan-600" />
               Bandar: Rp {bandarAvgPrice.toLocaleString("id-ID")}
+            </span>
+          ) : null}
+
+          {activeBottom ? (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-teal-50 border border-teal-200 text-teal-800 font-semibold text-[11px]">
+              <Target className="w-3 h-3 text-teal-600" />
+              Bottom Floor: Rp {activeBottom.toLocaleString("id-ID")}
             </span>
           ) : null}
 

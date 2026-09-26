@@ -461,7 +461,12 @@ export default function TickerDetailPage() {
                 )}
 
                 {/* 🛡️ BANDAR COST & SAFE ENTRY RADAR */}
-                <BandarCostSpotlight symbol={symbol} currentPrice={ps?.currentPrice} />
+                <BandarCostSpotlight
+                  symbol={symbol}
+                  currentPrice={ps?.currentPrice}
+                  bottomDetection={data?.bottomDetection}
+                  bottomPrice={kl?.bottomPrice || data?.bottomDetection?.bottomPrice}
+                />
 
                 {/* Metric Summary Cards */}
                 {sm && (
@@ -638,6 +643,8 @@ export default function TickerDetailPage() {
                   ticker={symbol}
                   currentPrice={curPrice}
                   keyLevels={kl}
+                  bottomPrice={kl?.bottomPrice || data?.bottomDetection?.bottomPrice}
+                  bottomDetection={data?.bottomDetection}
                   tradingPlan={vd?.tradingPlan}
                   recentSignals={sm?.recentSignals}
                 />
@@ -652,7 +659,8 @@ export default function TickerDetailPage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="p-4">
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-3">
+                        <LevelCard label="Bottom Floor" value={fmtPrice(kl.bottomPrice || data?.bottomDetection?.bottomPrice || kl.low52Week)} color="indigo" />
                         <LevelCard label="Support 1" value={fmtPrice(kl.support1)} color="emerald" />
                         <LevelCard label="Support 2" value={fmtPrice(kl.support2)} color="green" />
                         <LevelCard label="Resistance 1" value={fmtPrice(kl.resistance1)} color="rose" />
@@ -1099,7 +1107,12 @@ export default function TickerDetailPage() {
             {activeTab === "foreign" && (
               <div className="space-y-5 animate-in fade-in-50 duration-200">
                 {/* 🛡️ BANDAR COST & SMART MONEY DEEP DIVE */}
-                <BandarCostSpotlight symbol={symbol} currentPrice={ps?.currentPrice} />
+                <BandarCostSpotlight
+                  symbol={symbol}
+                  currentPrice={ps?.currentPrice}
+                  bottomDetection={data?.bottomDetection}
+                  bottomPrice={kl?.bottomPrice || data?.bottomDetection?.bottomPrice}
+                />
 
                 {ff && (
                   <>

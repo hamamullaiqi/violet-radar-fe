@@ -70,32 +70,35 @@ export default function AraAccumulationRadarCard() {
   const [bypassCacheTrigger, setBypassCacheTrigger] = useState(0);
 
   const { data, loading, refetch } = useFetch(
-    `/api/strategies/ara-accumulation?limit=10${bypassCacheTrigger > 0 ? `&refresh=true&t=${bypassCacheTrigger}` : ""}`
+    `/api/strategies/ara-accumulation?limit=5${bypassCacheTrigger > 0 ? `&refresh=true&t=${bypassCacheTrigger}` : ""}`
   );
 
-  const candidates: AraAccumulationCandidate[] = useMemo(() => {
-    if (!data?.candidates) return [];
-    return data.candidates.slice(0, 10);
+  const grouped = useMemo(() => {
+    return {
+      all: (data?.grouped?.all || data?.candidates || []) as AraAccumulationCandidate[],
+      matang: (data?.grouped?.matang || []) as AraAccumulationCandidate[],
+      base: (data?.grouped?.base || []) as AraAccumulationCandidate[],
+      pullback: (data?.grouped?.pullback || []) as AraAccumulationCandidate[],
+    };
   }, [data]);
 
+  const activePhaseList = useMemo(() => {
+    if (activeFilter === "MATANG") return grouped.matang;
+    if (activeFilter === "BASE") return grouped.base;
+    if (activeFilter === "PULLBACK") return grouped.pullback;
+    return grouped.all;
+  }, [grouped, activeFilter]);
+
   const filteredCandidates = useMemo(() => {
-    let list = candidates;
+    let list = activePhaseList;
 
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toUpperCase();
       list = list.filter((i) => i.ticker.includes(q) || (i.stockName && i.stockName.toUpperCase().includes(q)));
     }
 
-    if (activeFilter === "MATANG") {
-      list = list.filter((i) => i.phaseBadge === "AKUMULASI_MATANG");
-    } else if (activeFilter === "BASE") {
-      list = list.filter((i) => i.phaseBadge === "RE_ACCUMULATION_BASE");
-    } else if (activeFilter === "PULLBACK") {
-      list = list.filter((i) => i.phaseBadge === "PULLBACK_SUPPORT");
-    }
-
-    return list.slice(0, 10);
-  }, [candidates, searchQuery, activeFilter]);
+    return list.slice(0, 5);
+  }, [activePhaseList, searchQuery]);
 
   const handleRefresh = () => {
     setBypassCacheTrigger(Date.now());
@@ -117,7 +120,7 @@ export default function AraAccumulationRadarCard() {
                 </CardTitle>
                 <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800 text-[10px] font-bold">
                   <History className="h-3 w-3 mr-1 text-amber-600" />
-                  DNA Histori 1 Tahun (250 Hari)
+                  Cached 1-Year DNA (250 Hari)
                 </Badge>
               </div>
               <CardDescription className="text-xs text-slate-500">
@@ -141,51 +144,51 @@ export default function AraAccumulationRadarCard() {
 
           {/* FILTER & SEARCH */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2">
-            {/* TABS */}
-            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs font-medium">
+            {/* TABS - MASING-MASING 10 DATA */}
+            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs font-medium overflow-x-auto">
               <button
                 type="button"
                 onClick={() => setActiveFilter("ALL")}
-                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all ${
+                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all shrink-0 ${
                   activeFilter === "ALL"
                     ? "bg-white text-slate-900 shadow-2xs border border-slate-200"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                Semua ({candidates.length})
+                Top 5 ({grouped.all.length})
               </button>
               <button
                 type="button"
                 onClick={() => setActiveFilter("MATANG")}
-                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all ${
+                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all shrink-0 ${
                   activeFilter === "MATANG"
                     ? "bg-amber-600 text-white shadow-2xs"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                Akumulasi Matang 🔥
+                Akumulasi Matang 🔥 ({grouped.matang.length})
               </button>
               <button
                 type="button"
                 onClick={() => setActiveFilter("BASE")}
-                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all ${
+                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all shrink-0 ${
                   activeFilter === "BASE"
                     ? "bg-indigo-600 text-white shadow-2xs"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                Base Konsolidasi
+                Base Konsolidasi ({grouped.base.length})
               </button>
               <button
                 type="button"
                 onClick={() => setActiveFilter("PULLBACK")}
-                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all ${
+                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all shrink-0 ${
                   activeFilter === "PULLBACK"
                     ? "bg-emerald-600 text-white shadow-2xs"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                Pullback Support
+                Pullback Support ({grouped.pullback.length})
               </button>
             </div>
 
@@ -219,7 +222,7 @@ export default function AraAccumulationRadarCard() {
               </TableHeader>
 
               <TableBody>
-                {loading && candidates.length === 0 ? (
+                {loading && filteredCandidates.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="h-44 text-center text-slate-400">
                       <div className="flex flex-col items-center justify-center gap-2">
@@ -332,7 +335,7 @@ export default function AraAccumulationRadarCard() {
               </span>
             </div>
             <div className="text-[10px] text-slate-400">
-              Total {candidates.length} emiten lolos filter
+              Total {filteredCandidates.length} emiten lolos filter
             </div>
           </div>
         </CardContent>

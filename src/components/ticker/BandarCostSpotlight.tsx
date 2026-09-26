@@ -13,7 +13,8 @@ import {
   Clock,
   Compass,
   TrendingUp,
-  Layers
+  Layers,
+  Target
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,15 +22,38 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/comp
 import useFetch from "@/hooks/useFetch";
 import { formatRupiah } from "@/lib/utils";
 
+export interface BottomDetectionProps {
+  bottomPrice: number;
+  distanceToBottomPercent: number;
+  status: "AT_BOTTOM_SUPPORT" | "NEAR_BOTTOM" | "REBOUNDING_FROM_BOTTOM" | "ABOVE_FLOOR";
+  statusLabel: string;
+  floorType: string;
+  floorDescription: string;
+  isBottomCandleConfirmed: boolean;
+  candleReversalPattern?: string;
+  rsi14: number;
+  isRsiOversold: boolean;
+  volumeAbsorptionRatio: number;
+  safeStopLoss: number;
+  safeStopLossPercent: number;
+  riskRewardToR1: number;
+  confidenceScore: number;
+  summary: string;
+}
+
 interface BandarCostSpotlightProps {
   symbol: string;
   currentPrice?: number;
+  bottomDetection?: BottomDetectionProps;
+  bottomPrice?: number;
   className?: string;
 }
 
 export default function BandarCostSpotlight({
   symbol,
   currentPrice: propPrice,
+  bottomDetection,
+  bottomPrice: propBottomPrice,
   className = "",
 }: BandarCostSpotlightProps) {
   const [period, setPeriod] = useState<"1W" | "1M" | "3M">("1M");
@@ -303,6 +327,65 @@ export default function BandarCostSpotlight({
             </div>
           </div>
         </div>
+
+        {/* 🏗️ BOTTOM PRICE & FLOOR DETECTION BANNER (Di samping / Terintegrasi Modal Bandar) */}
+        {bottomDetection && (
+          <div className="p-4 rounded-xl border border-cyan-200/90 bg-linear-to-r from-cyan-50/90 via-teal-50/60 to-slate-50/80 space-y-2.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="p-1 rounded-lg bg-cyan-600 text-white shadow-2xs">
+                  <Target className="w-3.5 h-3.5" />
+                </div>
+                <span className="font-extrabold text-xs text-slate-900 tracking-tight">
+                  Deteksi Bottom Price & Lantai Dasar
+                </span>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                  bottomDetection.status === "AT_BOTTOM_SUPPORT"
+                    ? "bg-emerald-100 text-emerald-800 border-emerald-300 animate-pulse"
+                    : bottomDetection.status === "NEAR_BOTTOM"
+                    ? "bg-cyan-100 text-cyan-800 border-cyan-300"
+                    : bottomDetection.status === "REBOUNDING_FROM_BOTTOM"
+                    ? "bg-indigo-100 text-indigo-800 border-indigo-300"
+                    : "bg-slate-100 text-slate-700 border-slate-300"
+                }`}>
+                  {bottomDetection.statusLabel}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-slate-500 text-[11px]">Lantai Dasar:</span>
+                <span className="font-black font-mono text-cyan-950 bg-white px-2 py-0.5 rounded border border-cyan-200 shadow-2xs">
+                  Rp {bottomDetection.bottomPrice.toLocaleString("id-ID")}
+                </span>
+                <span className={`font-bold font-mono text-xs ${
+                  bottomDetection.distanceToBottomPercent <= 3.0 ? "text-emerald-700" : "text-slate-700"
+                }`}>
+                  ({bottomDetection.distanceToBottomPercent >= 0 ? "+" : ""}{bottomDetection.distanceToBottomPercent}% dari Bottom)
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs pt-1 border-t border-cyan-200/60">
+              <div className="space-y-0.5">
+                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">Struktur Lantai</span>
+                <span className="text-slate-800 font-bold text-[11px] block">{bottomDetection.floorDescription}</span>
+              </div>
+              <div className="space-y-0.5">
+                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">Konfirmasi Pembalikan</span>
+                <span className="text-slate-800 font-bold text-[11px] block">
+                  {bottomDetection.isBottomCandleConfirmed ? `⚡ ${bottomDetection.candleReversalPattern}` : "Pertahanan Support"}
+                  {bottomDetection.isRsiOversold ? ` (RSI ${bottomDetection.rsi14} Jenuh Jual)` : ""}
+                </span>
+              </div>
+              <div className="space-y-0.5">
+                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">Proteksi Stop Loss</span>
+                <span className="text-rose-700 font-bold text-[11px] font-mono block">
+                  Rp {bottomDetection.safeStopLoss.toLocaleString("id-ID")} (-{bottomDetection.safeStopLossPercent}%) • R:R 1:{bottomDetection.riskRewardToR1}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Clean, Sleek Visual Position Gauge */}
         <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/40 space-y-2">

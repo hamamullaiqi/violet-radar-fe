@@ -68,8 +68,10 @@ import MetricSummaryCards from "@/components/dashboard/MetricSummaryCards";
 import OverviewMonthly from "@/components/dashboard/OverviewMonthly";
 import OverViewYearly from "@/components/dashboard/OverViewYearly";
 import OverviewStatistics from "@/components/dashboard/OverviewStatistics";
+import UnifiedSpecialRadarTable from "@/components/dashboard/UnifiedSpecialRadarTable";
 import AraAccumulationRadarCard from "@/components/dashboard/AraAccumulationRadarCard";
 import FastReboundRadarCard from "@/components/dashboard/FastReboundRadarCard";
+import BottomHunterRadarCard from "@/components/dashboard/BottomHunterRadarCard";
 import AraTargetsCard from "@/components/dashboard/AraTargetsCard";
 import ArbTargetsCard from "@/components/dashboard/ArbTargetsCard";
 import ForeignAccumulationCard from "@/components/dashboard/ForeignAccumulationCard";
@@ -900,11 +902,8 @@ export default function Dashboard() {
             {/* 💎 BANDAR COST & SAFE ENTRY RADAR (SMART MONEY) */}
             <SmartMoneyRadarCard />
 
-            {/* 🎯 HEADLINERS: RADAR CALON ARA (FASE AKUMULASI) & RADAR FAST V-REBOUND (1 TAHUN) */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-              <AraAccumulationRadarCard />
-              <FastReboundRadarCard />
-            </div>
+            {/* 🎯 MASTER SPECIAL RADARS HUB: TOP 5 CALON ARA + TOP 5 BOTTOM HUNTER + TOP 1 FAST V-REBOUND */}
+            <UnifiedSpecialRadarTable />
 
             {/* ROW 1: SMART MARKET MOVERS - ARA VS ARB */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

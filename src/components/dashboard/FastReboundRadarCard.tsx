@@ -75,32 +75,35 @@ export default function FastReboundRadarCard() {
   const [bypassCacheTrigger, setBypassCacheTrigger] = useState(0);
 
   const { data, loading, refetch } = useFetch(
-    `/api/strategies/fast-rebound?limit=10${bypassCacheTrigger > 0 ? `&refresh=true&t=${bypassCacheTrigger}` : ""}`
+    `/api/strategies/fast-rebound?limit=5${bypassCacheTrigger > 0 ? `&refresh=true&t=${bypassCacheTrigger}` : ""}`
   );
 
-  const candidates: FastReboundCandidate[] = useMemo(() => {
-    if (!data?.candidates) return [];
-    return data.candidates.slice(0, 10);
+  const grouped = useMemo(() => {
+    return {
+      all: (data?.grouped?.all || data?.candidates || []) as FastReboundCandidate[],
+      hammer: (data?.grouped?.hammer || []) as FastReboundCandidate[],
+      oversold: (data?.grouped?.oversold || []) as FastReboundCandidate[],
+      vShape: (data?.grouped?.vShape || []) as FastReboundCandidate[],
+    };
   }, [data]);
 
+  const activeBadgeList = useMemo(() => {
+    if (activeFilter === "HAMMER") return grouped.hammer;
+    if (activeFilter === "OVERSOLD") return grouped.oversold;
+    if (activeFilter === "V_SHAPE") return grouped.vShape;
+    return grouped.all;
+  }, [grouped, activeFilter]);
+
   const filteredCandidates = useMemo(() => {
-    let list = candidates;
+    let list = activeBadgeList;
 
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toUpperCase();
       list = list.filter((i) => i.ticker.includes(q) || (i.stockName && i.stockName.toUpperCase().includes(q)));
     }
 
-    if (activeFilter === "HAMMER") {
-      list = list.filter((i) => i.reboundBadge === "SUPPORT_REJECTION_HAMMER" || i.candleReversalPattern.includes("Hammer"));
-    } else if (activeFilter === "OVERSOLD") {
-      list = list.filter((i) => i.reboundBadge === "OVERSOLD_BOUNCE_SETUP" || i.isRsiOversold);
-    } else if (activeFilter === "V_SHAPE") {
-      list = list.filter((i) => i.reboundBadge === "V_SHAPE_BOTTOM_REVERSAL");
-    }
-
-    return list.slice(0, 10);
-  }, [candidates, searchQuery, activeFilter]);
+    return list.slice(0, 5);
+  }, [activeBadgeList, searchQuery]);
 
   const handleRefresh = () => {
     setBypassCacheTrigger(Date.now());
@@ -122,7 +125,7 @@ export default function FastReboundRadarCard() {
                 </CardTitle>
                 <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-800 text-[10px] font-bold">
                   <Activity className="h-3 w-3 mr-1 text-emerald-600" />
-                  Koreksi Dalam & Rebound Cepat
+                  Cached V-Rebound DNA (250 Hari)
                 </Badge>
               </div>
               <CardDescription className="text-xs text-slate-500">
@@ -146,51 +149,51 @@ export default function FastReboundRadarCard() {
 
           {/* FILTER & SEARCH */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2">
-            {/* TABS */}
-            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs font-medium">
+            {/* TABS - MASING-MASING 5 DATA */}
+            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs font-medium overflow-x-auto">
               <button
                 type="button"
                 onClick={() => setActiveFilter("ALL")}
-                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all ${
+                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all shrink-0 ${
                   activeFilter === "ALL"
                     ? "bg-white text-slate-900 shadow-2xs border border-slate-200"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                Semua ({candidates.length})
+                Top 5 ({grouped.all.length})
               </button>
               <button
                 type="button"
                 onClick={() => setActiveFilter("HAMMER")}
-                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all ${
+                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all shrink-0 ${
                   activeFilter === "HAMMER"
                     ? "bg-emerald-600 text-white shadow-2xs"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                Hammer / Rejection ⚡
+                Hammer / Rejection ⚡ ({grouped.hammer.length})
               </button>
               <button
                 type="button"
                 onClick={() => setActiveFilter("OVERSOLD")}
-                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all ${
+                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all shrink-0 ${
                   activeFilter === "OVERSOLD"
                     ? "bg-indigo-600 text-white shadow-2xs"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                RSI Oversold
+                RSI Oversold ({grouped.oversold.length})
               </button>
               <button
                 type="button"
                 onClick={() => setActiveFilter("V_SHAPE")}
-                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all ${
+                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all shrink-0 ${
                   activeFilter === "V_SHAPE"
                     ? "bg-teal-600 text-white shadow-2xs"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                V-Shape Base
+                V-Shape Base ({grouped.vShape.length})
               </button>
             </div>
 
@@ -224,7 +227,7 @@ export default function FastReboundRadarCard() {
               </TableHeader>
 
               <TableBody>
-                {loading && candidates.length === 0 ? (
+                {loading && filteredCandidates.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="h-44 text-center text-slate-400">
                       <div className="flex flex-col items-center justify-center gap-2">
@@ -337,7 +340,7 @@ export default function FastReboundRadarCard() {
               </span>
             </div>
             <div className="text-[10px] text-slate-400">
-              Total {candidates.length} emiten lolos filter
+              Total {filteredCandidates.length} emiten lolos filter
             </div>
           </div>
         </CardContent>
