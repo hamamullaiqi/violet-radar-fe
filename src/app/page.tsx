@@ -8,7 +8,6 @@ import {
 
   AlertTriangle,
   RefreshCw,
-
   Play,
   CheckCircle,
   Clock,
@@ -20,9 +19,19 @@ import {
   KeyRound,
   SlidersHorizontal,
   ChevronRight,
+  ChevronLeft,
   BarChart3,
   Radar,
   Wallet,
+  Menu,
+  X,
+  LayoutDashboard,
+  Activity,
+  Sparkles,
+  TrendingUp,
+  Layers,
+  Compass,
+  FileSpreadsheet
 } from "lucide-react";
 import ChangePasswordModal from "@/components/ChangePasswordModal";
 import {
@@ -59,8 +68,8 @@ import MetricSummaryCards from "@/components/dashboard/MetricSummaryCards";
 import OverviewMonthly from "@/components/dashboard/OverviewMonthly";
 import OverViewYearly from "@/components/dashboard/OverViewYearly";
 import OverviewStatistics from "@/components/dashboard/OverviewStatistics";
-import AraPotentialCard from "@/components/dashboard/AraPotentialCard";
-import FractionBreakoutCard from "@/components/dashboard/FractionBreakoutCard";
+import AraAccumulationRadarCard from "@/components/dashboard/AraAccumulationRadarCard";
+import FastReboundRadarCard from "@/components/dashboard/FastReboundRadarCard";
 import AraTargetsCard from "@/components/dashboard/AraTargetsCard";
 import ArbTargetsCard from "@/components/dashboard/ArbTargetsCard";
 import ForeignAccumulationCard from "@/components/dashboard/ForeignAccumulationCard";
@@ -390,6 +399,8 @@ export default function Dashboard() {
   // Workspace Page Navigation State
   type CockpitPage = "overview" | "radars" | "signals" | "strategies" | "jobs";
   const [activePage, setActivePage] = useState<CockpitPage>("overview");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Sync tab with URL query parameter on initial mount
   useEffect(() => {
@@ -411,6 +422,7 @@ export default function Dashboard() {
       return;
     }
     setActivePage(newPage);
+    setMobileSidebarOpen(false);
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.set("tab", newPage);
@@ -581,219 +593,297 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
-
-      {/* NAVBAR */}
-      <nav className="border-b border-slate-200 bg-white sticky top-0 z-50 px-3 sm:px-6 py-2.5 sm:py-4 flex items-center justify-between gap-2 sm:gap-4 shadow-xs">
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <div className="relative flex h-2.5 w-2.5">
-            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${connected ? "bg-emerald-400" : "bg-rose-400"}`}></span>
-            <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${connected ? "bg-emerald-500" : "bg-rose-500"}`}></span>
-          </div>
-          <div>
-            <h1 className="font-black text-sm sm:text-lg tracking-tight text-slate-900">
-              VIOLETRADAR
-            </h1>
-            <p className="text-[10px] text-slate-500 font-medium hidden sm:block">Sistem Pemantau Sinyal & Portofolio</p>
-          </div>
-        </div>
-
-        <div className="flex-1 max-w-xs sm:max-w-sm flex justify-center sm:justify-start">
-          <SearchTickers />
-        </div>
-
-        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-          {/* Regime Indicator */}
-          <div className="hidden md:flex items-center gap-2 bg-slate-100/90 hover:bg-slate-200/80 transition-colors px-2.5 py-1 rounded-md border border-slate-200 text-xs shadow-2xs">
-            <span className="text-slate-500 font-semibold">IHSG:</span>
-            {marketRegime.close ? (
-              <span className="font-mono font-bold text-slate-800">
-                {marketRegime.close.toLocaleString("id-ID", { maximumFractionDigits: 1 })}
-              </span>
-            ) : null}
-            {marketRegime.changePercent !== undefined && (
-              <span className={`text-[11px] font-bold ${marketRegime.changePercent >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                ({marketRegime.changePercent >= 0 ? "+" : ""}{marketRegime.changePercent.toFixed(2)}%)
-              </span>
-            )}
-            <span
-              className={`px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                marketRegime.regime === "BULLISH"
-                  ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
-                  : marketRegime.regime === "BEARISH"
-                  ? "bg-rose-100 text-rose-800 border border-rose-300"
-                  : "bg-amber-100 text-amber-800 border border-amber-300"
-              }`}
-            >
-              {marketRegime.regime}
-            </span>
-          </div>
-
-          {/* Dedicated Portfolio & Execution Page Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.push("/portfolio")}
-            className="flex items-center gap-1.5 text-xs font-bold border-emerald-300 text-emerald-800 bg-emerald-50/80 hover:bg-emerald-100 h-8 px-2.5 shadow-2xs"
-          >
-            <Wallet className="w-3.5 h-3.5 text-emerald-600" />
-            <span className="hidden sm:inline">Portofolio & Eksekusi</span>
-            <span className="sm:hidden">Porto</span>
-          </Button>
-
-          {/* User Management Button (ADMIN Only) */}
-          {user.role === "ADMIN" && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push("/users")}
-              className="hidden lg:flex items-center gap-1.5 text-xs font-bold border-blue-200 text-blue-700 bg-blue-50/50 hover:bg-blue-100/70 h-8 px-2.5"
-            >
-              <Users className="w-3.5 h-3.5" />
-              <span>Kelola Pengguna</span>
-            </Button>
-          )}
-
-          {/* User Profile Summary */}
-          <div className="flex items-center gap-1.5 sm:gap-2 border-l border-slate-200 pl-2 sm:pl-4">
-            <div className="text-right hidden sm:block">
-              <p className="text-xs font-bold text-slate-800">{user.name}</p>
-              <p className="text-[10px] text-slate-400">{user.role}</p>
-            </div>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-full">
-                  <UserIcon className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-white border-slate-200 text-slate-900 sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Profil Pengguna</DialogTitle>
-                  <DialogDescription>Informasi akun administrator Anda.</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-3 py-3 text-sm">
-                  <div className="grid grid-cols-3 border-b border-slate-100 pb-2.5">
-                    <span className="text-slate-400">Nama:</span>
-                    <span className="col-span-2 font-bold text-slate-800">{user.name}</span>
-                  </div>
-                  <div className="grid grid-cols-3 border-b border-slate-100 pb-2.5">
-                    <span className="text-slate-400">Email:</span>
-                    <span className="col-span-2 font-mono text-xs text-slate-700">{user.email}</span>
-                  </div>
-                  <div className="grid grid-cols-3 pb-1">
-                    <span className="text-slate-400">Status Role:</span>
-                    <span className="col-span-2">
-                      <Badge className="bg-blue-600 hover:bg-blue-600 text-white font-medium text-[10px] py-0 px-2">{user.role}</Badge>
-                    </span>
-                  </div>
-                </div>
-                <DialogFooter className="w-full flex-col gap-2 pt-2 sm:flex-col sm:space-x-0">
-                  <Button
-                    type="button"
-                    onClick={() => setChangePasswordOpen(true)}
-                    variant="outline"
-                    className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-semibold text-xs h-9 cursor-pointer"
-                  >
-                    <KeyRound className="h-4 w-4 mr-1.5 text-indigo-600" /> Ganti Kata Sandi
-                  </Button>
-                  {user.role === "ADMIN" && (
-                    <Button
-                      onClick={() => router.push("/users")}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs h-9"
-                    >
-                      <Users className="h-4 w-4 mr-1.5" /> Buka Manajemen Pengguna
-                    </Button>
-                  )}
-                  <Button onClick={logout} variant="outline" className="w-full border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 font-semibold text-xs h-9">
-                    <LogOut className="h-4 w-4 mr-1.5" /> Keluar dari Akun
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            {/* Change Password Modal */}
-            <ChangePasswordModal
-              open={changePasswordOpen}
-              onOpenChange={setChangePasswordOpen}
-            />
-          </div>
-
-          <Button
-            onClick={() => fetchData()}
-            disabled={loading}
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-slate-500 hover:text-slate-900 hover:bg-slate-100"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          </Button>
-        </div>
-      </nav>
-
-      {/* SYSTEM NOTIFICATION */}
-      {message && (
-        <div className={`px-6 py-2.5 text-xs flex items-center justify-between border-b ${message.type === "success"
-          ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-          : "bg-rose-50 text-rose-800 border-rose-200"
-          }`}>
-          <div className="flex items-center gap-2">
-            {message.type === "success" ? <CheckCircle className="h-4 w-4 text-emerald-600" /> : <AlertTriangle className="h-4 w-4 text-rose-600" />}
-            <span>{message.text}</span>
-          </div>
-          <button onClick={() => setMessage(null)} className="font-bold hover:text-slate-900">✕</button>
-        </div>
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex font-sans">
+      {/* MOBILE BACKDROP OVERLAY */}
+      {mobileSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-40 lg:hidden transition-opacity"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
       )}
 
-      {/* BODY CONTENT */}
-      <main className="flex-1 p-4 md:p-6 max-w-[1680px] mx-auto w-full space-y-6">
+      {/* DASHBOARD SIDEBAR */}
+      <aside
+        className={`fixed lg:sticky top-0 left-0 z-50 h-screen bg-white border-r border-slate-200/90 flex flex-col justify-between transition-all duration-300 ease-in-out shadow-lg lg:shadow-none ${
+          sidebarCollapsed ? "w-20" : "w-64"
+        } ${
+          mobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        }`}
+      >
+        {/* TOP BRAND HEADER */}
+        <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-2 shrink-0">
+          <div className={`flex items-center gap-3 min-w-0 ${sidebarCollapsed ? "justify-center w-full" : ""}`}>
+            <div className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-violet-600 text-white shadow-sm shadow-violet-200 shrink-0">
+              <Radar className="w-5 h-5 text-white" />
+              <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${connected ? "bg-emerald-400" : "bg-rose-400"}`}></span>
+                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${connected ? "bg-emerald-500" : "bg-rose-500"}`}></span>
+              </span>
+            </div>
+            {!sidebarCollapsed && (
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <h1 className="font-black text-sm tracking-tight text-slate-900 truncate">
+                    VIOLET RADAR
+                  </h1>
+                  <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-violet-100 text-violet-700">PRO</span>
+                </div>
+                <p className="text-[10px] text-slate-400 font-medium truncate">Terminal Sinyal & Portofolio</p>
+              </div>
+            )}
+          </div>
 
-        {/* TOP METRIC SUMMARY CARDS */}
-        <MetricSummaryCards />
+          {/* Mobile close button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMobileSidebarOpen(false)}
+            className="lg:hidden h-8 w-8 text-slate-500 hover:text-slate-900"
+          >
+            <X className="w-4 h-4" />
+          </Button>
 
-        {/* WORKSPACE PAGE NAVIGATION BAR */}
-        <div className="sticky top-[53px] z-30 bg-slate-50/95 backdrop-blur-md py-1.5 sm:py-2">
-          <div className="flex items-center gap-1.5 p-1.5 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-x-auto no-scrollbar scroll-smooth">
-            <PageNavButton
+          {/* Desktop collapse button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="hidden lg:flex h-7 w-7 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg shrink-0"
+            title={sidebarCollapsed ? "Buka Sidebar" : "Ciutkan Sidebar"}
+          >
+            {sidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </Button>
+        </div>
+
+        {/* MARKET STATUS PILL IN SIDEBAR (if not collapsed) */}
+        {!sidebarCollapsed && marketRegime.close && (
+          <div className="mx-3 mt-3 p-2.5 bg-slate-50 rounded-xl border border-slate-200/70 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">IHSG Index</span>
+              <span
+                className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
+                  marketRegime.regime === "BULLISH"
+                    ? "bg-emerald-100 text-emerald-800"
+                    : marketRegime.regime === "BEARISH"
+                    ? "bg-rose-100 text-rose-800"
+                    : "bg-amber-100 text-amber-800"
+                }`}
+              >
+                {marketRegime.regime}
+              </span>
+            </div>
+            <div className="flex items-baseline gap-1.5 mt-0.5">
+              <span className="font-mono font-bold text-slate-800 text-sm">
+                {marketRegime.close.toLocaleString("id-ID", { maximumFractionDigits: 1 })}
+              </span>
+              {marketRegime.changePercent !== undefined && (
+                <span className={`text-[11px] font-bold ${marketRegime.changePercent >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                  {marketRegime.changePercent >= 0 ? "+" : ""}{marketRegime.changePercent.toFixed(2)}%
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* NAVIGATION ITEMS */}
+        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-5 no-scrollbar">
+          {/* SECTION 1: MENU UTAMA */}
+          <div className="space-y-1">
+            {!sidebarCollapsed && (
+              <div className="px-3 text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5">
+                Menu Utama
+              </div>
+            )}
+            <SidebarNavItem
               active={activePage === "overview"}
               onClick={() => handlePageChange("overview")}
               icon={<BarChart3 className="w-4 h-4" />}
               label="Overview & Grafik"
+              collapsed={sidebarCollapsed}
             />
-            <PageNavButton
+            <SidebarNavItem
+              active={false}
+              onClick={() => router.push("/portfolio")}
+              icon={<Wallet className="w-4 h-4 text-emerald-600" />}
+              label="Monitoring Portofolio"
+              badge="Cockpit"
+              collapsed={sidebarCollapsed}
+            />
+            <SidebarNavItem
               active={activePage === "radars"}
               onClick={() => handlePageChange("radars")}
               icon={<Radar className="w-4 h-4" />}
               label="Special Radars Pasar"
+              badge="Smart Money"
+              collapsed={sidebarCollapsed}
             />
-            <PageNavButton
+            <SidebarNavItem
               active={activePage === "signals"}
               onClick={() => handlePageChange("signals")}
               icon={<Zap className="w-4 h-4" />}
               label="Sinyal Live & Trailing"
+              collapsed={sidebarCollapsed}
             />
-            {user?.role === "ADMIN" && (
-              <>
-                <PageNavButton
-                  active={activePage === "strategies"}
-                  onClick={() => handlePageChange("strategies")}
-                  icon={<SlidersHorizontal className="w-4 h-4" />}
-                  label="Konfigurasi Parameter"
-                />
-                <PageNavButton
-                  active={activePage === "jobs"}
-                  onClick={() => handlePageChange("jobs")}
-                  icon={<Clock className="w-4 h-4" />}
-                  label="Control Panel & Jobs"
-                />
-              </>
+          </div>
+
+          {/* SECTION 2: ADMINISTRASI & TOOLS (ADMIN ONLY) */}
+          {user?.role === "ADMIN" && (
+            <div className="space-y-1 pt-3 border-t border-slate-100">
+              {!sidebarCollapsed && (
+                <div className="px-3 text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5">
+                  Admin & Konfigurasi
+                </div>
+              )}
+              <SidebarNavItem
+                active={activePage === "strategies"}
+                onClick={() => handlePageChange("strategies")}
+                icon={<SlidersHorizontal className="w-4 h-4" />}
+                label="Konfigurasi Parameter"
+                collapsed={sidebarCollapsed}
+              />
+              <SidebarNavItem
+                active={activePage === "jobs"}
+                onClick={() => handlePageChange("jobs")}
+                icon={<Clock className="w-4 h-4" />}
+                label="Control Panel & Jobs"
+                collapsed={sidebarCollapsed}
+              />
+              <SidebarNavItem
+                active={false}
+                onClick={() => router.push("/users")}
+                icon={<Users className="w-4 h-4" />}
+                label="Manajemen Pengguna"
+                collapsed={sidebarCollapsed}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* BOTTOM USER PROFILE CARD */}
+        <div className="p-3 border-t border-slate-100 bg-slate-50/50 shrink-0">
+          <div className={`flex items-center gap-2.5 ${sidebarCollapsed ? "justify-center" : ""}`}>
+            <div className="w-8 h-8 rounded-full bg-violet-600 text-white font-black text-xs flex items-center justify-center shrink-0">
+              {user.name.charAt(0).toUpperCase()}
+            </div>
+            {!sidebarCollapsed && (
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-slate-800 truncate">{user.name}</p>
+                <Badge className="bg-slate-200 text-slate-700 hover:bg-slate-200 text-[9px] font-bold py-0 px-1.5">
+                  {user.role}
+                </Badge>
+              </div>
+            )}
+            {!sidebarCollapsed && (
+              <div className="flex items-center gap-0.5">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setChangePasswordOpen(true)}
+                  className="h-7 w-7 text-slate-400 hover:text-slate-800 hover:bg-slate-200/60 rounded-md"
+                  title="Ganti Kata Sandi"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={logout}
+                  className="h-7 w-7 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-md"
+                  title="Keluar dari Akun"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </Button>
+              </div>
             )}
           </div>
         </div>
+      </aside>
 
-        {/* PAGE 1: OVERVIEW & PERFORMANCE VISUALIZATIONS */}
-        {activePage === "overview" && (
-          <div className="space-y-6 animate-in fade-in-50 duration-150">
-            <div className="space-y-6">
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        open={changePasswordOpen}
+        onOpenChange={setChangePasswordOpen}
+      />
+
+      {/* MAIN CONTENT AREA */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+        {/* TOP HEADER BAR */}
+        <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Mobile Hamburger Button */}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setMobileSidebarOpen(true)}
+              className="lg:hidden h-8 w-8 text-slate-700 border-slate-200"
+            >
+              <Menu className="w-4 h-4" />
+            </Button>
+
+            <div className="hidden sm:block">
+              <h2 className="text-[10px] font-black uppercase tracking-wider text-slate-400">Halaman Aktif</h2>
+              <p className="text-xs sm:text-sm font-bold text-slate-900">
+                {activePage === "overview" && "📊 Overview & Grafik Performa"}
+                {activePage === "radars" && "📡 Special Radars Pasar Saham"}
+                {activePage === "signals" && "⚡ Sinyal Live & Trailing Radar"}
+                {activePage === "strategies" && "⚙️ Konfigurasi Parameter Strategi"}
+                {activePage === "jobs" && "⏱️ Control Panel & Automated Jobs"}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex-1 max-w-xs sm:max-w-md flex justify-center sm:justify-start">
+            <SearchTickers />
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Quick Portofolio Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push("/portfolio")}
+              className="hidden sm:flex items-center gap-1.5 text-xs font-bold border-emerald-300 text-emerald-800 bg-emerald-50/80 hover:bg-emerald-100 h-8 px-2.5 shadow-2xs"
+            >
+              <Wallet className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Portofolio Cockpit</span>
+            </Button>
+
+            {/* Refresh Button */}
+            <Button
+              onClick={() => fetchData()}
+              disabled={loading}
+              variant="outline"
+              size="sm"
+              className="h-8 px-2.5 text-xs border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold gap-1.5"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+              <span className="hidden md:inline">Refresh Data</span>
+            </Button>
+          </div>
+        </header>
+
+        {/* SYSTEM NOTIFICATION */}
+        {message && (
+          <div className={`px-6 py-2.5 text-xs flex items-center justify-between border-b ${message.type === "success"
+            ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+            : "bg-rose-50 text-rose-800 border-rose-200"
+            }`}>
+            <div className="flex items-center gap-2">
+              {message.type === "success" ? <CheckCircle className="h-4 w-4 text-emerald-600" /> : <AlertTriangle className="h-4 w-4 text-rose-600" />}
+              <span>{message.text}</span>
+            </div>
+            <button onClick={() => setMessage(null)} className="font-bold hover:text-slate-900 cursor-pointer">✕</button>
+          </div>
+        )}
+
+        {/* MAIN BODY CONTENT */}
+        <main className="flex-1 p-4 md:p-6 max-w-[1680px] mx-auto w-full space-y-6">
+          {/* PAGE 1: OVERVIEW & PERFORMANCE VISUALIZATIONS (Now includes Top Metric Summary Cards!) */}
+          {activePage === "overview" && (
+            <div className="space-y-6 animate-in fade-in-50 duration-150">
+              {/* Top Metric Summary Cards inside Overview & Grafik */}
+              <MetricSummaryCards />
+
               {/* Visualizations row */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <OverviewMonthly />
@@ -801,8 +891,7 @@ export default function Dashboard() {
               </div>
               <OverviewStatistics />
             </div>
-          </div>
-        )}
+          )}
 
         {/* PAGE 2: SPECIAL RADARS PASAR */}
         {activePage === "radars" && (
@@ -811,10 +900,10 @@ export default function Dashboard() {
             {/* 💎 BANDAR COST & SAFE ENTRY RADAR (SMART MONEY) */}
             <SmartMoneyRadarCard />
 
-            {/* 🎯 HEADLINERS: RADAR CALON ARA & RADAR CALON LEDAKAN 20% (PRE-BREAKOUT FRAKSI) */}
+            {/* 🎯 HEADLINERS: RADAR CALON ARA (FASE AKUMULASI) & RADAR FAST V-REBOUND (1 TAHUN) */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-              <AraPotentialCard />
-              <FractionBreakoutCard />
+              <AraAccumulationRadarCard />
+              <FastReboundRadarCard />
             </div>
 
             {/* ROW 1: SMART MARKET MOVERS - ARA VS ARB */}
@@ -1160,37 +1249,57 @@ export default function Dashboard() {
 
       </main>
 
-      {/* FOOTER */}
-      <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-400 font-medium shadow-inner">
-        <p>© 2026 VioletRadar. Built with Next.js, shadcn/ui & Tailwind CSS. Powered by Open Sans Font & Calmar Risk Engine.</p>
-      </footer>
+        {/* FOOTER */}
+        <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-400 font-medium">
+          <p>© 2026 VioletRadar. Terminal Sinyal, Analisis Bandar & Monitoring Portofolio Saham Terintegrasi.</p>
+        </footer>
+      </div>
     </div>
   );
 }
 
-function PageNavButton({
+function SidebarNavItem({
   active,
   onClick,
   icon,
   label,
+  badge,
+  collapsed
 }: {
   active: boolean;
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
+  badge?: string | number;
+  collapsed?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap shrink-0 ${
+      title={collapsed ? label : undefined}
+      className={`group w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-xs transition-all duration-200 cursor-pointer ${
         active
-          ? "bg-indigo-600 text-white shadow-xs"
-          : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-      }`}
+          ? "bg-violet-600 text-white shadow-sm shadow-violet-200"
+          : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/90"
+      } ${collapsed ? "justify-center px-2" : ""}`}
     >
-      {icon}
-      <span>{label}</span>
+      <span className={`shrink-0 transition-transform group-hover:scale-110 ${active ? "text-white" : "text-slate-500 group-hover:text-violet-600"}`}>
+        {icon}
+      </span>
+      {!collapsed && (
+        <span className="truncate flex-1 text-left">{label}</span>
+      )}
+      {!collapsed && badge && (
+        <span
+          className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md tracking-wider ${
+            active ? "bg-white/20 text-white" : "bg-violet-50 text-violet-700 border border-violet-200"
+          }`}
+        >
+          {badge}
+        </span>
+      )}
     </button>
   );
 }
+

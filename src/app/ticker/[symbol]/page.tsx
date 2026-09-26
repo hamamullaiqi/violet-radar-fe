@@ -636,8 +636,10 @@ export default function TickerDetailPage() {
               <div className="space-y-5 animate-in fade-in-50 duration-200">
                 <TickerChart
                   ticker={symbol}
+                  currentPrice={curPrice}
                   keyLevels={kl}
                   tradingPlan={vd?.tradingPlan}
+                  recentSignals={sm?.recentSignals}
                 />
 
                 {/* Key Price Levels Reference Grid */}
