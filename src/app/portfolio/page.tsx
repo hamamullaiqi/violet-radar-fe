@@ -25,6 +25,7 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 import TradePortfolioMonitoringCard from "@/components/dashboard/TradePortfolioMonitoringCard";
+import IdxExcelUploadModal from "@/components/dashboard/IdxExcelUploadModal";
 import SearchTickers from "@/components/SearchTickers";
 import ChangePasswordModal from "@/components/ChangePasswordModal";
 
@@ -93,6 +94,8 @@ export default function PortfolioPage() {
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
+          <IdxExcelUploadModal />
+
           {/* User Profile */}
           <div className="flex items-center gap-2 border-l border-slate-200 pl-3">
             <div className="text-right hidden sm:block">

@@ -31,7 +31,8 @@ import {
   TrendingUp,
   Layers,
   Compass,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Flame
 } from "lucide-react";
 import ChangePasswordModal from "@/components/ChangePasswordModal";
 import {
@@ -68,6 +69,7 @@ import MetricSummaryCards from "@/components/dashboard/MetricSummaryCards";
 import OverviewMonthly from "@/components/dashboard/OverviewMonthly";
 import OverViewYearly from "@/components/dashboard/OverViewYearly";
 import OverviewStatistics from "@/components/dashboard/OverviewStatistics";
+import IhsgMarketTechnicalCard from "@/components/dashboard/IhsgMarketTechnicalCard";
 import UnifiedSpecialRadarTable from "@/components/dashboard/UnifiedSpecialRadarTable";
 import AraAccumulationRadarCard from "@/components/dashboard/AraAccumulationRadarCard";
 import FastReboundRadarCard from "@/components/dashboard/FastReboundRadarCard";
@@ -82,6 +84,8 @@ import AraPatternsCard from "@/components/dashboard/AraPatternsCard";
 import SignalMonitoringCard from "@/components/dashboard/SignalMonitoringCard";
 import SmartMoneyRadarCard from "@/components/dashboard/SmartMoneyRadarCard";
 import TradePortfolioMonitoringCard from "@/components/dashboard/TradePortfolioMonitoringCard";
+import SuperSwingScreenerCard from "@/components/dashboard/SuperSwingScreenerCard";
+import IdxExcelUploadModal from "@/components/dashboard/IdxExcelUploadModal";
 import SearchTickers from "@/components/SearchTickers";
 
 // Default Backtest/Simulation metrics as a fallback when backend is disconnected
@@ -607,7 +611,7 @@ export default function Dashboard() {
       {/* DASHBOARD SIDEBAR */}
       <aside
         className={`fixed lg:sticky top-0 left-0 z-50 h-screen bg-white border-r border-slate-200/90 flex flex-col justify-between transition-all duration-300 ease-in-out shadow-lg lg:shadow-none ${
-          sidebarCollapsed ? "w-20" : "w-64"
+          sidebarCollapsed ? "w-20" : "w-72"
         } ${
           mobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
@@ -700,13 +704,13 @@ export default function Dashboard() {
               active={activePage === "overview"}
               onClick={() => handlePageChange("overview")}
               icon={<BarChart3 className="w-4 h-4" />}
-              label="Overview & Grafik"
+              label="Overview Market"
               collapsed={sidebarCollapsed}
             />
             <SidebarNavItem
               active={false}
               onClick={() => router.push("/portfolio")}
-              icon={<Wallet className="w-4 h-4 text-emerald-600" />}
+              icon={<Wallet className="w-4 h-4" />}
               label="Monitoring Portofolio"
               badge="Cockpit"
               collapsed={sidebarCollapsed}
@@ -825,7 +829,7 @@ export default function Dashboard() {
             <div className="hidden sm:block">
               <h2 className="text-[10px] font-black uppercase tracking-wider text-slate-400">Halaman Aktif</h2>
               <p className="text-xs sm:text-sm font-bold text-slate-900">
-                {activePage === "overview" && "📊 Overview & Grafik Performa"}
+                {activePage === "overview" && "🧭 Overview Market & Analisis Teknikal IHSG"}
                 {activePage === "radars" && "📡 Special Radars Pasar Saham"}
                 {activePage === "signals" && "⚡ Sinyal Live & Trailing Radar"}
                 {activePage === "strategies" && "⚙️ Konfigurasi Parameter Strategi"}
@@ -839,12 +843,15 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Upload Excel EOD Button */}
+            <IdxExcelUploadModal onSuccess={fetchData} />
+
             {/* Quick Portofolio Button */}
             <Button
               variant="outline"
               size="sm"
               onClick={() => router.push("/portfolio")}
-              className="hidden sm:flex items-center gap-1.5 text-xs font-bold border-emerald-300 text-emerald-800 bg-emerald-50/80 hover:bg-emerald-100 h-8 px-2.5 shadow-2xs"
+              className="hidden sm:flex items-center gap-1.5 text-xs font-bold border-emerald-300 text-emerald-800 bg-emerald-50/80 hover:bg-emerald-100 h-8 px-2.5 shadow-2xs cursor-pointer"
             >
               <Wallet className="w-3.5 h-3.5 text-emerald-600" />
               <span>Portofolio Cockpit</span>
@@ -856,7 +863,7 @@ export default function Dashboard() {
               disabled={loading}
               variant="outline"
               size="sm"
-              className="h-8 px-2.5 text-xs border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold gap-1.5"
+              className="h-8 px-2.5 text-xs border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold gap-1.5 cursor-pointer"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
               <span className="hidden md:inline">Refresh Data</span>
@@ -880,54 +887,48 @@ export default function Dashboard() {
 
         {/* MAIN BODY CONTENT */}
         <main className="flex-1 p-4 md:p-6 max-w-[1680px] mx-auto w-full space-y-6">
-          {/* PAGE 1: OVERVIEW & PERFORMANCE VISUALIZATIONS (Now includes Top Metric Summary Cards!) */}
+          {/* PAGE 1: OVERVIEW MARKET & ANALISIS IHSG */}
           {activePage === "overview" && (
             <div className="space-y-6 animate-in fade-in-50 duration-150">
-              {/* Top Metric Summary Cards inside Overview & Grafik */}
-              <MetricSummaryCards />
+              {/* 🧭 PALING ATAS: CHART INTERAKTIF IHSG & TEKNIKAL SUPPORT RESISTEN & ESTIMASI BOTTOM */}
+              <IhsgMarketTechnicalCard marketRegime={marketRegime} />
 
-              {/* Visualizations row */}
+              {/* 💎 BANDAR COST & SAFE ENTRY RADAR (SMART MONEY) */}
+              <SmartMoneyRadarCard />
+
+              {/* ROW 1: SMART MARKET MOVERS - ARA VS ARB */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <OverviewMonthly />
-                <OverViewYearly />
+                <AraTargetsCard />
+                <ArbTargetsCard />
               </div>
-              <OverviewStatistics />
+
+              {/* ROW 2: FOREIGN FLOWS - ACCUMULATION VS DISTRIBUTION */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <ForeignAccumulationCard />
+                <ForeignDistributionCard />
+              </div>
+
+              {/* ROW 3: PERFORMANCE GROW VS LOSE */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <GrowthLeadersCard />
+                <LoseLeadersCard />
+              </div>
+
+              {/* ROW 4: ARA PATTERN RECOGNITION STATS */}
+              <div className="grid grid-cols-1 gap-6">
+                <AraPatternsCard />
+              </div>
             </div>
           )}
 
         {/* PAGE 2: SPECIAL RADARS PASAR */}
         {activePage === "radars" && (
           <div className="space-y-6 animate-in fade-in-50 duration-150">
-
-            {/* 💎 BANDAR COST & SAFE ENTRY RADAR (SMART MONEY) */}
-            <SmartMoneyRadarCard />
-
-            {/* 🎯 MASTER SPECIAL RADARS HUB: TOP 5 CALON ARA + TOP 5 BOTTOM HUNTER + TOP 1 FAST V-REBOUND */}
+            {/* 🎯 MASTER SPECIAL RADARS: 2 SAHAM FAST V-REBOUND PILIHAN HARIAN */}
             <UnifiedSpecialRadarTable />
 
-            {/* ROW 1: SMART MARKET MOVERS - ARA VS ARB */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <AraTargetsCard />
-              <ArbTargetsCard />
-            </div>
-
-            {/* ROW 2: FOREIGN FLOWS - ACCUMULATION VS DISTRIBUTION */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <ForeignAccumulationCard />
-              <ForeignDistributionCard />
-            </div>
-
-            {/* ROW 3: PERFORMANCE GROW VS LOSE */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <GrowthLeadersCard />
-              <LoseLeadersCard />
-            </div>
-
-            {/* ROW 4: ARA PATTERN RECOGNITION STATS */}
-            <div className="grid grid-cols-1 gap-6">
-              <AraPatternsCard />
-            </div>
-
+            {/* 🔥 RADAR SUPER SWING 50%+ BAGGER SCREENER & BACKTEST */}
+            <SuperSwingScreenerCard />
           </div>
         )}
 
@@ -1283,7 +1284,7 @@ function SidebarNavItem({
           : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/90"
       } ${collapsed ? "justify-center px-2" : ""}`}
     >
-      <span className={`shrink-0 transition-transform group-hover:scale-110 ${active ? "text-white" : "text-slate-500 group-hover:text-violet-600"}`}>
+      <span className={`shrink-0 transition-transform group-hover:scale-110 ${active ? "text-white [&>svg]:text-white" : "text-slate-500 group-hover:text-violet-600"}`}>
         {icon}
       </span>
       {!collapsed && (

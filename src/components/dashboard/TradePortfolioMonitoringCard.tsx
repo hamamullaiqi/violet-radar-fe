@@ -66,8 +66,10 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { api } from "@/lib/api";
+import { useTickersMaster } from "@/hooks/useTickersMaster";
 
 export default function TradePortfolioMonitoringCard() {
+  const { data: tickersMaster } = useTickersMaster();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
   const [candidateSignals, setCandidateSignals] = useState<any[]>([]);
@@ -138,6 +140,43 @@ export default function TradePortfolioMonitoringCard() {
   const [clearExistingHistory, setClearExistingHistory] = useState<boolean>(false);
   const [importLoading, setImportLoading] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
+
+  // Manual Journal Input States
+  const [manualJournalOpen, setManualJournalOpen] = useState(false);
+  const [savingJournal, setSavingJournal] = useState(false);
+  const [journalForm, setJournalForm] = useState({
+    ticker: "",
+    strategyType: "SWING",
+    entryDate: new Date().toISOString().split("T")[0],
+    exitDate: new Date().toISOString().split("T")[0],
+    entryPrice: 0,
+    exitPrice: 0,
+    lots: 1,
+    stopLossPrice: 0,
+    targetPrice1: 0,
+    targetPrice2: 0,
+    exitReason: "HIT_TP1",
+    exitNote: ""
+  });
+
+  const openManualJournalModal = () => {
+    const todayStr = new Date().toISOString().split("T")[0];
+    setJournalForm({
+      ticker: "",
+      strategyType: "SWING",
+      entryDate: todayStr,
+      exitDate: todayStr,
+      entryPrice: 0,
+      exitPrice: 0,
+      lots: 1,
+      stopLossPrice: 0,
+      targetPrice1: 0,
+      targetPrice2: 0,
+      exitReason: "HIT_TP1",
+      exitNote: ""
+    });
+    setManualJournalOpen(true);
+  };
 
   const openStrategyRoadmap = (trade: any) => {
     setSelectedTradeForRoadmap(trade);
@@ -836,6 +875,75 @@ export default function TradePortfolioMonitoringCard() {
       setImportLoading(false);
     }
   };
+
+  // Handler: Save Manual Trade Journal Record
+  const handleSaveManualJournal = async () => {
+    if (!journalForm.ticker.trim()) {
+      showNotice("error", "Kode ticker saham wajib diisi.");
+      return;
+    }
+    if (journalForm.entryPrice <= 0 || journalForm.exitPrice <= 0) {
+      showNotice("error", "Harga Beli dan Harga Jual harus lebih besar dari Rp 0.");
+      return;
+    }
+    if (journalForm.lots < 1) {
+      showNotice("error", "Jumlah lot minimal 1 lot.");
+      return;
+    }
+
+    const cleanTicker = journalForm.ticker.trim().toUpperCase();
+    const matched = Array.isArray(tickersMaster)
+      ? tickersMaster.find((t: any) => (t.ticker || t.code || t.symbol || "").toUpperCase() === cleanTicker)
+      : null;
+    const resolvedStockName = matched?.name || matched?.stockName || cleanTicker;
+
+    setSavingJournal(true);
+    try {
+      const res = await api.post("/api/portfolio/manual-trade", {
+        ticker: cleanTicker,
+        stockName: resolvedStockName,
+        strategyType: journalForm.strategyType,
+        entryDate: journalForm.entryDate,
+        exitDate: journalForm.exitDate,
+        entryPrice: Number(journalForm.entryPrice),
+        exitPrice: Number(journalForm.exitPrice),
+        lots: Number(journalForm.lots),
+        stopLossPrice: journalForm.stopLossPrice > 0 ? Number(journalForm.stopLossPrice) : undefined,
+        targetPrice1: journalForm.targetPrice1 > 0 ? Number(journalForm.targetPrice1) : undefined,
+        targetPrice2: journalForm.targetPrice2 > 0 ? Number(journalForm.targetPrice2) : undefined,
+        exitReason: journalForm.exitReason,
+        exitNote: journalForm.exitNote
+      });
+
+      if (res.data?.success) {
+        showNotice("success", res.data.message || "Transaksi berhasil dicatat ke Jurnal!");
+        setManualJournalOpen(false);
+        fetchHistory(1);
+        fetchOverview();
+      }
+    } catch (err: any) {
+      console.error("Gagal mencatat transaksi manual:", err);
+      showNotice("error", err?.response?.data?.message || "Gagal menyimpan transaksi ke jurnal.");
+    } finally {
+      setSavingJournal(false);
+    }
+  };
+
+  // Handler: Delete Single Trade Journal Record
+  const handleDeleteHistoryTrade = async (tradeId: string, ticker: string) => {
+    if (!confirm(`Yakin ingin menghapus catatan transaksi ${ticker} dari jurnal?`)) return;
+    try {
+      const res = await api.delete(`/api/portfolio/history/${tradeId}`);
+      if (res.data?.success) {
+        showNotice("success", res.data.message || `Catatan ${ticker} berhasil dihapus.`);
+        fetchHistory(historyPagination.page);
+        fetchOverview();
+      }
+    } catch (err: any) {
+      showNotice("error", err?.response?.data?.message || "Gagal menghapus catatan jurnal.");
+    }
+  };
+
 
   const account = data?.account || { initialCapital: 0, currentCash: 0, totalDeposited: 0 };
   const equity = data?.equity || { totalEquity: 0, totalInvestedCapital: 0, unrealizedPnLRupiah: 0, unrealizedPnLPercent: 0, netPortfolioGrowthPercent: 0 };
@@ -2508,6 +2616,13 @@ export default function TradePortfolioMonitoringCard() {
               <div className="flex items-center flex-wrap gap-2">
                 <Button
                   size="sm"
+                  onClick={openManualJournalModal}
+                  className="h-8 text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-xs cursor-pointer"
+                >
+                  <PlusCircle className="w-3.5 h-3.5 mr-1.5" /> + Catat Transaksi Manual
+                </Button>
+                <Button
+                  size="sm"
                   onClick={() => {
                     setImportTradesPreview([]);
                     setImportPreviewSummary(null);
@@ -2555,8 +2670,17 @@ export default function TradePortfolioMonitoringCard() {
                 <div className="py-12 text-center text-slate-400">
                   <p className="font-bold text-slate-700 text-sm">Belum Ada Riwayat Transaksi Selesai</p>
                   <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1">
-                    Transaksi yang Anda tutup (Take Profit, Stop Loss, atau Emergency Cut) akan tercatat rapi di sini secara permanen di database.
+                    Transaksi yang Anda tutup (Take Profit, Stop Loss, atau Emergency Cut) atau catat secara manual akan tersimpan rapi di sini secara permanen di database.
                   </p>
+                  <div className="mt-4">
+                    <Button
+                      size="sm"
+                      onClick={openManualJournalModal}
+                      className="h-8 text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-xs cursor-pointer"
+                    >
+                      <PlusCircle className="w-3.5 h-3.5 mr-1.5" /> + Catat Transaksi Pertama
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -2572,6 +2696,7 @@ export default function TradePortfolioMonitoringCard() {
                         <TableHead className="text-right text-xs font-bold text-slate-700">Realized PnL</TableHead>
                         <TableHead className="text-center text-xs font-bold text-slate-700">Alasan Exit</TableHead>
                         <TableHead className="text-xs font-bold text-slate-700">Catatan</TableHead>
+                        <TableHead className="text-center w-[50px] text-xs font-bold text-slate-700">Aksi</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -2586,6 +2711,8 @@ export default function TradePortfolioMonitoringCard() {
                               <Badge className={
                                 t.strategyType === "SWING"
                                   ? "bg-blue-100 text-blue-700 text-[10px]"
+                                  : t.strategyType === "SUPER_SWING"
+                                  ? "bg-violet-100 text-violet-700 border-violet-200 text-[10px]"
                                   : "bg-purple-100 text-purple-700 text-[10px]"
                               }>
                                 {t.strategyType}
@@ -2625,6 +2752,17 @@ export default function TradePortfolioMonitoringCard() {
                             </TableCell>
                             <TableCell className="text-xs text-slate-500 max-w-xs truncate">
                               {t.exitNote || "-"}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteHistoryTrade(t._id, t.ticker)}
+                                className="h-7 w-7 p-0 text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
+                                title="Hapus catatan dari jurnal"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
                             </TableCell>
                           </TableRow>
                         );
@@ -4478,9 +4616,286 @@ export default function TradePortfolioMonitoringCard() {
               type="button"
               onClick={handleClearAllHistory}
               disabled={importLoading}
-              className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs h-8 shadow-xs flex-1"
+              className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs h-8 shadow-xs flex-1 cursor-pointer"
             >
               {importLoading ? "Menghapus..." : "Ya, Hapus Semua Riwayat"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL 10: INPUT JURNAL TRANSAKSI MANUAL */}
+      <Dialog open={manualJournalOpen} onOpenChange={setManualJournalOpen}>
+        <DialogContent className="sm:max-w-xl max-h-[92vh] overflow-y-auto bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
+                <PlusCircle className="w-5 h-5" />
+              </div>
+              <span>Catat Transaksi Manual ke Jurnal Trade</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Catat riwayat transaksi saham yang sudah selesai dieksekusi untuk mendokumentasikan trading plan, evaluasi psikologi, dan statistik portofolio.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2 text-xs">
+            {/* Row 1: Ticker & Strategi */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Kode Saham (Ticker) *</label>
+                <Input
+                  placeholder="Contoh: BBRI, ASII, ARNA"
+                  value={journalForm.ticker}
+                  onChange={(e) => setJournalForm({ ...journalForm, ticker: e.target.value.toUpperCase() })}
+                  className="h-8 font-black uppercase text-xs tracking-wider"
+                  maxLength={6}
+                />
+                {journalForm.ticker.trim().length >= 2 && (
+                  <div className="text-[11px] text-indigo-600 font-medium truncate flex items-center gap-1 mt-0.5">
+                    {(() => {
+                      const matched = Array.isArray(tickersMaster)
+                        ? tickersMaster.find((t: any) => (t.ticker || t.code || t.symbol || "").toUpperCase() === journalForm.ticker.trim().toUpperCase())
+                        : null;
+                      return matched ? (
+                        <span className="bg-indigo-50 px-1.5 py-0.5 rounded text-indigo-700 border border-indigo-100">
+                          🏢 {matched.name || matched.stockName}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">Nama otomatis diambil dari master tickers</span>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Strategi</label>
+                <Select
+                  value={journalForm.strategyType}
+                  onValueChange={(val) => setJournalForm({ ...journalForm, strategyType: val })}
+                >
+                  <SelectTrigger className="h-8 text-xs bg-white">
+                    <SelectValue placeholder="Pilih Strategi" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SWING">SWING (Trend Follow)</SelectItem>
+                    <SelectItem value="SUPER_SWING">SUPER SWING (Golden Cross)</SelectItem>
+                    <SelectItem value="BELI_SORE">BELI SORE (BSJP)</SelectItem>
+                    <SelectItem value="CALON_ARA">CALON ARA (Momentum)</SelectItem>
+                    <SelectItem value="MANUAL">MANUAL (Trading Bebas)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Row 2: Tanggal Beli & Jual */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Tanggal Beli (Entry Date) *</span>
+                </label>
+                <Input
+                  type="date"
+                  value={journalForm.entryDate}
+                  onChange={(e) => setJournalForm({ ...journalForm, entryDate: e.target.value })}
+                  className="h-8 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Tanggal Jual (Exit Date) *</span>
+                </label>
+                <Input
+                  type="date"
+                  value={journalForm.exitDate}
+                  onChange={(e) => setJournalForm({ ...journalForm, exitDate: e.target.value })}
+                  className="h-8 text-xs"
+                />
+              </div>
+            </div>
+
+            {/* Row 3: Harga Beli, Harga Jual, Lot */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Harga Beli (Rp) *</label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={journalForm.entryPrice || ""}
+                  onChange={(e) => setJournalForm({ ...journalForm, entryPrice: Number(e.target.value) })}
+                  className="h-8 text-xs font-semibold"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Harga Jual (Rp) *</label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={journalForm.exitPrice || ""}
+                  onChange={(e) => setJournalForm({ ...journalForm, exitPrice: Number(e.target.value) })}
+                  className="h-8 text-xs font-bold"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Jumlah Lot *</label>
+                <Input
+                  type="number"
+                  min={1}
+                  placeholder="1"
+                  value={journalForm.lots || ""}
+                  onChange={(e) => setJournalForm({ ...journalForm, lots: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+                  className="h-8 text-xs font-bold"
+                />
+              </div>
+            </div>
+
+            {/* Row 4: Alasan Exit & Proteksi Level */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1 sm:col-span-1">
+                <label className="font-bold text-slate-700">Alasan Exit</label>
+                <Select
+                  value={journalForm.exitReason}
+                  onValueChange={(val) => setJournalForm({ ...journalForm, exitReason: val })}
+                >
+                  <SelectTrigger className="h-8 text-xs bg-white">
+                    <SelectValue placeholder="Pilih Alasan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="HIT_TP1">🎯 HIT TP1 (Target Profit 1)</SelectItem>
+                    <SelectItem value="HIT_TP2">🚀 HIT TP2 (Target Profit 2)</SelectItem>
+                    <SelectItem value="TRAILING_WIN">🛡️ TRAILING STOP / BEP</SelectItem>
+                    <SelectItem value="HIT_SL">🛑 HIT SL (Stop Loss)</SelectItem>
+                    <SelectItem value="MANUAL_EXIT">🚪 MANUAL EXIT (Keluar Sendiri)</SelectItem>
+                    <SelectItem value="EMERGENCY_CUT">⚡ EMERGENCY CUT</SelectItem>
+                    <SelectItem value="EXPIRED">⏱️ EXPIRED / TIMEOUT</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1 sm:col-span-1">
+                <label className="font-bold text-slate-700">Stop Loss Plan (Rp)</label>
+                <Input
+                  type="number"
+                  placeholder="Opsional"
+                  value={journalForm.stopLossPrice || ""}
+                  onChange={(e) => setJournalForm({ ...journalForm, stopLossPrice: Number(e.target.value) })}
+                  className="h-8 text-xs text-rose-600"
+                />
+              </div>
+
+              <div className="space-y-1 sm:col-span-1">
+                <label className="font-bold text-slate-700">Target Profit (Rp)</label>
+                <Input
+                  type="number"
+                  placeholder="Opsional"
+                  value={journalForm.targetPrice1 || ""}
+                  onChange={(e) => setJournalForm({ ...journalForm, targetPrice1: Number(e.target.value) })}
+                  className="h-8 text-xs text-emerald-600"
+                />
+              </div>
+            </div>
+
+            {/* Row 5: Catatan / Evaluasi Psikologi */}
+            <div className="space-y-1">
+              <label className="font-bold text-slate-700">Catatan Jurnal & Evaluasi Transaksi</label>
+              <Input
+                placeholder="Contoh: Entry pas Golden Cross MA20/50 volume solid. Disiplin TP1 saat sentuh resistensi kuat."
+                value={journalForm.exitNote}
+                onChange={(e) => setJournalForm({ ...journalForm, exitNote: e.target.value })}
+                className="h-8 text-xs"
+              />
+            </div>
+
+            {/* Live Calculation Preview Box */}
+            {(() => {
+              const curEntry = Number(journalForm.entryPrice) || 0;
+              const curExit = Number(journalForm.exitPrice) || 0;
+              const curLots = Number(journalForm.lots) || 0;
+              const totalCapital = curEntry * curLots * 100;
+              const totalReturn = curExit * curLots * 100;
+              const pnlRp = (curExit - curEntry) * curLots * 100;
+              const pnlPct = curEntry > 0 ? (((curExit - curEntry) / curEntry) * 100).toFixed(2) : "0.00";
+              const isProfit = pnlRp >= 0;
+
+              const d1 = new Date(journalForm.entryDate);
+              const d2 = new Date(journalForm.exitDate);
+              const hDays = !isNaN(d1.getTime()) && !isNaN(d2.getTime())
+                ? Math.max(1, Math.round(Math.abs(d2.getTime() - d1.getTime()) / (1000 * 3600 * 24)))
+                : 1;
+
+              return (
+                <div className={`p-3.5 rounded-xl border transition-all ${isProfit ? "bg-emerald-50/70 border-emerald-200" : "bg-rose-50/70 border-rose-200"}`}>
+                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200/60">
+                    <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                      Kalkulasi Live Transaksi
+                    </span>
+                    <Badge variant="outline" className="bg-white text-slate-700 text-[10px] font-bold">
+                      {hDays} Hari Simpan
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                    <div className="p-2 bg-white rounded-lg border border-slate-200 shadow-2xs">
+                      <div className="text-[10px] text-slate-500 font-semibold">Total Modal Beli</div>
+                      <div className="text-xs font-bold text-slate-800">
+                        Rp {totalCapital.toLocaleString("id-ID")}
+                      </div>
+                    </div>
+
+                    <div className="p-2 bg-white rounded-lg border border-slate-200 shadow-2xs">
+                      <div className="text-[10px] text-slate-500 font-semibold">Total Hasil Jual</div>
+                      <div className="text-xs font-bold text-slate-800">
+                        Rp {totalReturn.toLocaleString("id-ID")}
+                      </div>
+                    </div>
+
+                    <div className={`p-2 rounded-lg border shadow-2xs ${isProfit ? "bg-emerald-100/60 border-emerald-300 text-emerald-800" : "bg-rose-100/60 border-rose-300 text-rose-800"}`}>
+                      <div className="text-[10px] font-bold uppercase">Realized PnL</div>
+                      <div className="text-xs font-black">
+                        {isProfit ? "+" : ""}Rp {pnlRp.toLocaleString("id-ID")}
+                      </div>
+                    </div>
+
+                    <div className={`p-2 rounded-lg border shadow-2xs ${isProfit ? "bg-emerald-100/60 border-emerald-300 text-emerald-800" : "bg-rose-100/60 border-rose-300 text-rose-800"}`}>
+                      <div className="text-[10px] font-bold uppercase">Return %</div>
+                      <div className="text-xs font-black">
+                        {isProfit ? "+" : ""}{pnlPct}%
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          <DialogFooter className="border-t border-slate-100 pt-3 flex flex-col sm:flex-row gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setManualJournalOpen(false)}
+              className="text-xs h-8 text-slate-600 cursor-pointer"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveManualJournal}
+              disabled={savingJournal || !journalForm.ticker || journalForm.entryPrice <= 0 || journalForm.exitPrice <= 0}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs h-8 shadow-xs cursor-pointer gap-1.5 disabled:opacity-50"
+            >
+              {savingJournal ? (
+                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <CheckCircle2 className="w-3.5 h-3.5" />
+              )}
+              <span>{savingJournal ? "Menyimpan ke Jurnal..." : "💾 Simpan ke Jurnal Riwayat"}</span>
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -4488,3 +4903,4 @@ export default function TradePortfolioMonitoringCard() {
     </div>
   );
 }
+
