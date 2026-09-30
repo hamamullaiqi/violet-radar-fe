@@ -68,14 +68,16 @@ export interface FastReboundCandidate {
 }
 
 export type ReboundFilter = "ALL" | "HAMMER" | "OVERSOLD" | "V_SHAPE";
+export type UniverseFilterType = "SHARIA_TOP10" | "ALL";
 
 export default function FastReboundRadarCard() {
   const [activeFilter, setActiveFilter] = useState<ReboundFilter>("ALL");
+  const [universeFilter, setUniverseFilter] = useState<UniverseFilterType>("SHARIA_TOP10");
   const [searchQuery, setSearchQuery] = useState("");
   const [bypassCacheTrigger, setBypassCacheTrigger] = useState(0);
 
   const { data, loading, refetch } = useFetch(
-    `/api/strategies/fast-rebound?limit=5${bypassCacheTrigger > 0 ? `&refresh=true&t=${bypassCacheTrigger}` : ""}`
+    `/api/strategies/fast-rebound?limit=5&universe=${universeFilter}${bypassCacheTrigger > 0 ? `&refresh=true&t=${bypassCacheTrigger}` : ""}`
   );
 
   const grouped = useMemo(() => {
@@ -147,8 +149,39 @@ export default function FastReboundRadarCard() {
             </div>
           </div>
 
-          {/* FILTER & SEARCH */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2">
+          {/* UNIVERSE & CATEGORY FILTER */}
+          <div className="flex flex-col gap-2 pt-2">
+            {/* UNIVERSE SELECTOR */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Universe:</span>
+              <button
+                type="button"
+                onClick={() => setUniverseFilter("SHARIA_TOP10")}
+                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                  universeFilter === "SHARIA_TOP10"
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                <span>🕌</span>
+                <span>Top 10 Syariah (&lt; Rp 3.000)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setUniverseFilter("ALL")}
+                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                  universeFilter === "ALL"
+                    ? "bg-indigo-600 text-white shadow-xs"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                <span>🌐</span>
+                <span>Semua Saham IDX</span>
+              </button>
+            </div>
+
+            {/* FILTER & SEARCH */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             {/* TABS - MASING-MASING 5 DATA */}
             <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs font-medium overflow-x-auto">
               <button
@@ -209,7 +242,8 @@ export default function FastReboundRadarCard() {
               />
             </div>
           </div>
-        </CardHeader>
+        </div>
+      </CardHeader>
 
         {/* CONTENT */}
         <CardContent className="p-0 flex-1 flex flex-col justify-between">

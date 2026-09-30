@@ -127,7 +127,10 @@ export default function IdxExcelUploadModal({ triggerButton, onSuccess }: IdxExc
         setHasForeignData(hasForeign);
         setPreviewRows(sample);
 
-        // Also convert to base64 for upload payload
+        // Store parsed JSON rows for direct lightweight transmission
+        setParsedJsonRecords(json);
+
+        // Also convert to base64 for fallback
         const base64Reader = new FileReader();
         base64Reader.onloadend = () => {
           const base64String = base64Reader.result as string;
@@ -142,8 +145,10 @@ export default function IdxExcelUploadModal({ triggerButton, onSuccess }: IdxExc
     reader.readAsBinaryString(selectedFile);
   };
 
+  const [parsedJsonRecords, setParsedJsonRecords] = useState<any[]>([]);
+
   const handleUploadSubmit = async () => {
-    if (!fileBase64) {
+    if (!parsedJsonRecords.length && !fileBase64) {
       setErrorMsg("Pilih file Excel/CSV terlebih dahulu.");
       return;
     }
@@ -151,8 +156,10 @@ export default function IdxExcelUploadModal({ triggerButton, onSuccess }: IdxExc
     setUploading(true);
     setErrorMsg(null);
     try {
+      // Send parsed JSON records directly to bypass Nginx payload size limits (only ~100KB vs 5MB base64)
       const res = await api.post("/api/market-data/idx/upload-excel", {
-        fileBase64,
+        records: parsedJsonRecords.length > 0 ? parsedJsonRecords : undefined,
+        fileBase64: parsedJsonRecords.length === 0 ? fileBase64 : undefined,
         date: targetDate
       });
 
